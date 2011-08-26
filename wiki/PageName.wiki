@@ -3,7 +3,7 @@
 
 = Introduction =
 
-SimDesign open-source projects include:
+[http://www.simdesign.nl SimDesign] open-source projects include:
   * NativeXml
   * NativeJpg
   * NativeSvg (future)
