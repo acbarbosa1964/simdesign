@@ -4,9 +4,9 @@
 = Introduction =
 
 SimDesign open-source projects include:
-- NativeXml
-- NativeJpg
-- NativeSvg (future)
+  * NativeXml
+  * NativeJpg
+  * NativeSvg (future)
 
 
 = Details =
