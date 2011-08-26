@@ -1,0 +1,16 @@
+#summary This is the SimDesign open-source SVN repository.
+#labels xmljpegsvgopen-source
+
+= Introduction =
+
+SimDesign open-source projects include:
+- NativeXml
+- NativeJpg
+- NativeSvg (future)
+
+
+= Details =
+
+More details soon!
+
+Nils Haeck, also known as mellobot (author)
