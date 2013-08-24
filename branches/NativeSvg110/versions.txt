@@ -1,0 +1,55 @@
+Version History for the Pyro rendering engine
+=============================================
+
+Pyro version: simlib/pyro/source/Pyro.pas: cPyroVersion
+
+Maintained by: Nils Haeck
++ = Added feature
+* = Enhanced feature
+- = Removed feature
+! = Bugfix
+
+Version 1.10 (15jun2011)
+* made all pyro units platform-independent (unit Windows not included
+  except in pgPlatform.pas)
+* updated demos "svgViewer" and "Quick"
+* updated unit headers
+* corrected "hanging begins"
+* updated nativexml
+* updated nativejpg
+* joined pgPolygon.pas and pgPolyPolygon.pas in just one unit pgPolygon.pas
+* joined pgGraphic, pgSizeable, pgPaintable, pgViewPort into pgViewPort
+* joined pgElement, pgProperties, pgStorage into pgElement
+* deleted pgGroup (no longer necessary)
++ converted String to Utf8String
+* updated svgViewer
+* removed pgAntiAliasing (AA now done in Pyro lib itself)
++ made pgGeometry.pas independent (can now also be used in other projects without pyro)
+* use simdesign.inc instead of pyro.inc
+
+Version 1.09 (28nov2010)
+* Added debugging with many DoDebugOut methods in universal fashion (sdDebug.pas)
+* New sdBitmap.pas with platform-independent bitmap in NativeJpg
+
+Version 1.08 (24jul2010)
+* Use nativesvg with nativexmlex
+* SvgTest with image and text, using debug info
+
+Version 1.07 (03Apr2010)
++ Added nativesvg/demos/svgtest SvgTest.dpr demo
++ added nativesvg/docu
+* updated pyro/docu
+
+Version 1.06 (03Apr2010)
+! Fixed pgSyncList.pas (thanks to BE)
+* Documentation changes
+
+Version 1.05 (06Mar2010)
+! Changed NativeSvg as separate project
++ Added SVG + JPG example
++ Added NativeJpg as raster format 
+
+[Many changes between..]
+
+Version 1.00 - somewhere 2004
+Initial release
