@@ -8,8 +8,8 @@ uses
   Pyro in '..\..\..\pyro\source\Pyro.pas',
   pgScene in '..\..\..\pyro\source\pgScene.pas',
   pgRasterize in '..\..\..\pyro\source\pgRasterize.pas',
-  NativeXmlC14n in '..\..\..\nativexml\NativeXmlC14n.pas',
-  NativeXml in '..\..\..\nativexml\NativeXml.pas',
+  //NativeXmlC14n in '..\..\..\nativexml\NativeXmlC14n.pas',
+  NativeXmlOld in '..\..\..\nativexml\NativeXmlOld.pas',
   pgPlatform in '..\..\..\pyro\source\pgPlatform.pas',
   pgCoreSceneViewer in '..\..\..\pyro\source\gui\pgCoreSceneViewer.pas';
 

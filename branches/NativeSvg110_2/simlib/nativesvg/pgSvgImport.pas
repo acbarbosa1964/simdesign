@@ -29,7 +29,7 @@ uses
   sdSortedLists, sdDebug,
 
   // Pyro component
-  pgScene, pgDocument, pgViewPort, pgParser, 
+  pgScene, pgDocument, pgViewPort, pgParser,
   pgShape, pgCommandPath, pgImage, Pyro, pgSVGNamedColors;
 
 type
