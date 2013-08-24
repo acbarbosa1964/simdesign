@@ -1,0 +1,51 @@
+Instructions for building the svgviewer demo
+============================================
+
+compatible software to compile and build the demo:
+Delphi7 - DelphiXE (only tested Delphi7 and DelphiXE)
+
+* browse to \simlib\nativesvg\demos\svgviewer
+
+* open svgviewer.dpr in the IDE. Note that you can use View > Project Manager to see the project.
+
+* the demo should compile out of the box. If there are any problems, use the project manager to remove some references.
+
+* run the viewer
+
+* in the viewer, open file>load SVG
+
+* open "tiger.svg"
+
+* check out the other menus
+
+Pyro Library
+============
+The Pyro library is rather extensive. This is the structure:
+
+\simlib\pyro\source: 
+This is the core library, and unit Pyro.pas holds all the lowlevel types, constants and global functions that all the other units need. These other units are named pg*.pas. Example: pgDocument.pas.
+
+\simlib\pyro\source\gui:
+Additional units that contain graphical user interface code. Example: pgVirtualScrollbox.pas
+
+\simlib\nativexml: SimDesign's NativeXml component 
+
+\simlib\nativejpg: SimDesign's NativeJpg component
+
+\simlib\bitmap: SimDesign's (platform-independent) bitmap processing code
+
+\simlib\nativesvg: SimDesign's actual SVG processing code
+
+Some other folders hold files that are necessary for Pyro. The most noteworthy is:
+
+\general\simdesign.inc: the global include file that with all the compiler defines for the different versions of Delphi (and FPC)
+
+Happy coding!
+
+Nils Haeck  
+
+
+  
+ 
+
+
