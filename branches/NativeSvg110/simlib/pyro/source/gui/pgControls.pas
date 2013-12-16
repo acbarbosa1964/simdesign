@@ -8,7 +8,7 @@ unit pgControls;
 interface
 
 uses
-  Graphics, Messages, Classes, SysUtils, Controls,
+  Windows, Graphics, Messages, Classes, SysUtils, Controls,
   // pyro
   pgWinGDI, pgCanvas, pgPyroCanvas, pgGDICanvas, pgTransform, pgPlatform, Pyro;
 
@@ -21,6 +21,7 @@ type
     FCanvas: TpgCanvas;
     FCanvasType: TpgCanvasType;
     FFillBackground: boolean;
+    FHandle: HDC;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
     procedure SetCanvasType(const Value: TpgCanvasType);
@@ -33,6 +34,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     property Canvas: TpgCanvas read FCanvas;
+    property Handle: HDC read FHandle;
   published
     property CanvasType: TpgCanvasType read FCanvasType write SetCanvasType;
   end;
@@ -68,6 +70,7 @@ procedure TpgCustomControl.PaintWindow(DC: HDC);
 var
   S: TpgState;
   R: TpgRect;
+  Color: TColor;
 begin
   // Get clipping rect
   pgGetClipBox(DC, R);

@@ -17,8 +17,7 @@ interface
 {$i simdesign.inc}
 
 uses
-  {Wind//ows,} Classes, SysUtils, Graphics, pgRaster, pgBitmap, Pyro, pgColor,
-  pgWinGDI;
+  pgWinGDI, Classes, Graphics, SysUtils, pgRaster, pgBitmap, Pyro, pgColor;
 
 type
 

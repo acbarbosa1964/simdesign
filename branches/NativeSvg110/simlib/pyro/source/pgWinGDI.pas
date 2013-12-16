@@ -17,7 +17,7 @@ unit pgWinGDI;
 interface
 
 uses
-  {Wind//ows,} SysUtils, Graphics, pgSurface, Pyro, pgColor, pgBitmap, pgCanvas, pgBlend;
+  SysUtils, Graphics, pgSurface, Pyro, pgColor, pgBitmap, pgCanvas, pgBlend;
 
 type
 

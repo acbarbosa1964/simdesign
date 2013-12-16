@@ -45,7 +45,7 @@ unit pgContentProvider;
 interface
 
 uses
-  SysUtils, Contnrs, Classes, Controls, Messages, pgCanvas,
+  SysUtils, Contnrs, Classes, {Controls,} Messages, pgCanvas,
   pgTransform, pgControls, pgPlatform, Pyro;
 
 type

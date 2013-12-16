@@ -26,8 +26,8 @@ type
     destructor Destroy; override;  
   published
     property Provider: TpgContentProvider read FProvider write SetProvider;
-    property Align;
-    property Anchors;
+    //property Align;
+{    property Anchors;
     property AutoSize;
     property BevelInner;
     property BevelOuter;
@@ -76,7 +76,7 @@ type
     property OnResize;
     property OnStartDock;
     property OnStartDrag;
-    property OnUnDock;
+    property OnUnDock;}
   end;
 
 implementation

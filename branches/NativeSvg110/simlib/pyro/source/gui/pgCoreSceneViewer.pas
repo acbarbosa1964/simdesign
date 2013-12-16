@@ -9,7 +9,7 @@ interface
 
 uses
   SysUtils, Classes, Messages, Graphics, pgScene, pgViewer,
-  pgSurface, pgViewPort, pgContentProvider, pgBitmap, pgGDICanvas,
+  pgSurface, pgViewPort, pgContentProvider, pgBitmap, {pgGDICanvas,}
   pgTransform, pgWinGDI, pgCanvas, Math, Pyro;
 
 type

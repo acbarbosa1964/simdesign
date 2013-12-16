@@ -55,7 +55,7 @@ type
 
   TpgRenderFont = class(TPersistent)
   private
-    FFamily: string;
+    FFamily: utf8string;
     FStyle: TpgFontStyle;
     FVariant: TpgFontVariant;
     FWeight: TpgFontWeight;
@@ -68,7 +68,7 @@ type
     constructor Create; virtual;
     function GetKerningPair(Char1, Char2: widechar): TpgFloat; virtual;
     property Glyphs[C: PWideChar]: TpgGlyph read GetGlyphs;
-    property Family: string read FFamily write FFamily;
+    property Family: utf8string read FFamily write FFamily;
     property Style: TpgFontStyle read FStyle write FStyle;
     property Variant: TpgFontVariant read FVariant write FVariant;
     property Weight: TpgFontWeight read FWeight write FWeight;

@@ -38,7 +38,7 @@ interface
 {$i simdesign.inc}
 
 // uncomment if you do not want to include the Graphics unit.
-{$define USEGRAPHICS}
+{.$define USEGRAPHICS}
 
 // Uncomment to save memory space for large xml documents if you don't need tags.
 // Tags are an additional integer field that can be used by the application.
