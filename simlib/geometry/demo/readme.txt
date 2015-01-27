@@ -1,1 +1,0 @@
-Demo projects that demonstrate the use of any source files in the geometry folder
