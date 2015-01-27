@@ -29,7 +29,7 @@ uses
   {$endif}
 
   // simdesign
-  RelaxeXml;
+  RelaxXml;
 
 type
   TfrmMain = class(TForm)
