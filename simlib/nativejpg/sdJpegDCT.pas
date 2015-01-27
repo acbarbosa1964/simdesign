@@ -16,11 +16,11 @@ unit sdJpegDCT;
 interface
 
 uses
-  Classes, NativeXml, sdJpegTypes, sdJpegImage;
+  Classes, sdJpegTypes, sdJpegImage, sdDebug;
 
 type
 
-  TsdJpegDCT = class(TsdDebugPersistent)
+  TsdJpegDCT = class(TDebugPersistent)
   private
     FQuant: TsdIntArray64;
     FMap: TsdJpegBlockMap;

@@ -18,14 +18,12 @@
 }
 unit sdSortedLists;
 
-{$IFDEF FPC}
-  {$MODE Delphi}
-{$ENDIF}
+{$i simdesign.inc}
 
 interface
 
 uses
-  Contnrs, SysUtils;
+  Contnrs, SysUtils, sdDebug;
 
 type
 
@@ -38,31 +36,17 @@ type
     procedure Append(AItem: TObject);
   end;
 
-  // Keep a sorted list of objects, sort them by the object's locally unique ID (Luid),
-  // which is just an integer (32bits, instead of a real 128bits Guid).
-  // Override method GetLuid, it should return the Luid of object AItem.
-  // TLuidList is used for compatibility with legacy code (formerly TUniqueIDList)
-  TLuidList = class(TCustomObjectList)
+  // Keep a sorted list of objects, sort them by the object's unique ID.
+  // Override method ItemID, it should return the ID of object AItem.
+  TUniqueIDList = class(TCustomObjectList)
   protected
-    function GetLuid(AItem: TObject): integer; virtual; abstract;
-    function IndexByLuid(const ALuid: integer; out Index: integer): boolean;
+    function GetID(AItem: TObject): integer; virtual; abstract;
+    function IndexByID(AID: integer; out Index: integer): boolean;
   public
-    function NextLuid: integer;
-    function HasLuid(const ALuid: integer): boolean;
-    procedure RemoveByLuid(const ALuid: integer);
+    function HasID(AID: integer): boolean;
+    procedure RemoveByID(AID: integer);
     function Add(AItem: TObject): integer;
-  end;
-
-  // Keep a sorted list of objects, sort them by the object's globally unique ID (Guid).
-  // Override method GetGuid, it should return the guid of object AItem.
-  TGuidList = class(TCustomObjectList)
-  protected
-    function GetGuid(AItem: TObject): TGuid; virtual; abstract;
-    function IndexByGuid(const AGuid: TGuid; out Index: integer): boolean;
-  public
-    function HasGuid(const AGuid: TGuid): boolean;
-    procedure RemoveByGuid(const AGuid: TGuid);
-    function Add(AItem: TObject): integer;
+    function NextUniqueID: integer;
   end;
 
   // TCustomSortedList is a TObjectList descendant providing easy sorting
@@ -112,7 +96,6 @@ type
   end;
 
 // Some basic compare routines
-function CompareCardinal(C1, C2: Cardinal): integer;
 function CompareInteger(Int1, Int2: integer): integer;
 function CompareLongWord(LW1, LW2: longword): integer;
 function CompareInt64(const Int1, Int2: int64): integer;
@@ -127,7 +110,6 @@ function CompareGuid(const Guid1, Guid2: TGUID): integer;
 function IsEqualGuid(const Guid1, Guid2: TGUID): boolean;
 function IsEmptyGuid(const AGuid: TGUID): boolean;
 function NewGuid: TGUID;
-// streaming of TGuid can be found in sdStreamableData.pas
 
 type
 
@@ -179,17 +161,6 @@ const
   cEmptyGuid: TGUID = (D1: 0; D2: 0; D3: 0; D4: (0, 0, 0, 0, 0, 0, 0, 0));
 
 implementation
-
-function CompareCardinal(C1, C2: Cardinal): integer;
-begin
-  if C1 < C2 then
-    Result := -1
-  else
-    if C1 > C2 then
-      Result := 1
-    else
-      Result := 0;
-end;
 
 function CompareInteger(Int1, Int2: integer): integer;
 begin
@@ -271,21 +242,16 @@ end;
 function CompareGuid(const Guid1, Guid2: TGUID): integer;
 var
   i: integer;
-  a, b: PCardinal;
+  a, b: PIntegerArray;
 begin
-  a := PCardinal(@Guid1);
-  b := PCardinal(@Guid2);
+  a := PIntegerArray(@Guid1);
+  b := PIntegerArray(@Guid2);
   i := 0;
-  Result := CompareCardinal(a^, b^);
-  while (Result = 0) and (i < 3) do
-  begin
+  repeat
+    Result := CompareInteger(a^[i], b^[i]);
     inc(i);
-    inc(a);
-    inc(b);
-    Result := CompareCardinal(a^, b^);
-  end;
+  until (Result <> 0) or (i = 4);
 end;
-
 
 function IsEqualGuid(const Guid1, Guid2: TGUID): boolean;
 begin
@@ -329,37 +295,31 @@ begin
   Insert(Count, AItem);
 end;
 
-{ TLuidList }
+{ TUniqueIDList }
 
-function TLuidList.Add(AItem: TObject): integer;
+function TUniqueIDList.Add(AItem: TObject): integer;
 begin
-  // do we have AItem?
-  if IndexByLuid(GetLuid(AItem), Result) then
-
+  // do we have it
+  if IndexByID(GetID(AItem), Result) then
     // Replace existing
     Put(Result, AItem)
-
   else
-  begin
     // Insert
     Insert(Result, AItem);
-  end;
 end;
 
-function TLuidList.HasLuid(const ALuid: integer): boolean;
+function TUniqueIDList.HasID(AID: integer): boolean;
 var
   Index: integer;
 begin
-  Result := IndexByLuid(ALuid, Index);
+  Result := IndexByID(AID, Index);
 end;
 
-function TLuidList.IndexByLuid(const ALuid: integer;
-  out Index: integer): boolean;
+function TUniqueIDList.IndexByID(AID: integer; out Index: integer): boolean;
 var
   Min, Max: integer;
 begin
   Result := False;
-
   // Find position for insert - binary method
   Index := 0;
   Min := 0;
@@ -367,7 +327,7 @@ begin
   while Min < Max do
   begin
     Index := (Min + Max) div 2;
-    case CompareInteger(GetLuid(List[Index]), ALuid) of
+    case CompareInteger(GetID(List[Index]), AID) of
     -1: Min := Index + 1;
      0: begin
           Result := True;
@@ -379,77 +339,19 @@ begin
   Index := Min;
 end;
 
-function TLuidList.NextLuid: integer;
+function TUniqueIDList.NextUniqueID: integer;
 begin
   if Count = 0 then
     Result := 1
   else
-    Result := GetLuid(List[Count - 1]) + 1;
+    Result := GetID(List[Count - 1]) + 1;
 end;
 
-procedure TLuidList.RemoveByLuid(const ALuid: integer);
+procedure TUniqueIDList.RemoveByID(AID: integer);
 var
   Index: integer;
 begin
-  if IndexByLuid(ALuid, Index) then
-    Delete(Index);
-end;
-
-{ TGuidList }
-
-function TGuidList.Add(AItem: TObject): integer;
-begin
-  // do we have AItem?
-  if IndexByGuid(GetGuid(AItem), Result) then
-
-    // Replace existing
-    Put(Result, AItem)
-
-  else
-  begin
-    // Insert
-    Insert(Result, AItem);
-  end;
-end;
-
-function TGuidList.HasGuid(const AGuid: TGuid): boolean;
-var
-  Index: integer;
-begin
-  Result := IndexByGuid(AGuid, Index);
-end;
-
-function TGuidList.IndexByGuid(const AGuid: TGuid;
-  out Index: integer): boolean;
-var
-  Min, Max: integer;
-begin
-  Result := False;
-
-  // Find position for insert - binary method
-  Index := 0;
-  Min := 0;
-  Max := Count;
-  while Min < Max do
-  begin
-    Index := (Min + Max) div 2;
-    case CompareGuid(GetGuid(List[Index]), AGuid) of
-    -1: Min := Index + 1;
-     0: begin
-          Result := True;
-          exit;
-        end;
-     1: Max := Index;
-    end;
-  end;
-  Index := Min;
-end;
-
-procedure TGuidList.RemoveByGuid(const AGuid: TGuid);
-var
-  Index: integer;
-begin
-  if IndexByGuid(AGuid, Index) then
+  if IndexByID(AID, Index) then
     Delete(Index);
 end;
 

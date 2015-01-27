@@ -27,29 +27,22 @@
 
   This software may ONLY be used or replicated in accordance with
   the LICENSE found in this source distribution.
-
-  Modifications:
-  14jul2011: added TColorTransform functions SrcCellStride / DstCellStride
 }
 unit sdColorTransforms;
 
 interface
 
 uses
-  Classes, NativeXml;
+  Classes, sdGraphicTypes, sdDebug;
 
 type
 
   // Abstract color transform
-  TsdColorTransform = class(TsdDebugPersistent)
+  TsdColorTransform = class(TDebugPersistent)
   public
     constructor Create; virtual;
     // Transform Count colors from Source to Dest
     procedure Transform(Source, Dest: pointer; Count: integer); virtual; abstract;
-    // Source cellstride (#bytes per cell)
-    function SrcCellStride: integer; virtual; abstract;
-    // Dest cellstride (#bytes per cell)
-    function DstCellStride: integer; virtual; abstract;
   end;
 
   // Transform class
@@ -65,32 +58,24 @@ type
   TsdNullTransform16bit = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // Null transform: 24bit/pixel direct copy.
   TsdNullTransform24bit = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // Null transform: 32bit/pixel direct copy.
   TsdNullTransform32bit = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // Invert gray values from 0->255 and 255->0
   TsdTransformInverseGray8bit = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // Inversion transform: invert colour triplets RGB->BGR, can be used for any
@@ -98,8 +83,6 @@ type
   TsdTransformInvertTriplet24bit = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // Abstract JFIF transform (transforms used by JPEG's JFIF spec)
@@ -109,10 +92,7 @@ type
     function RangeLimitDescale(A: integer): integer;
   public
     constructor Create; override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
-
   // Abstract JFIF forward transform (YCbCr to RGB space)
   TsdJfifFwdTransform = class(TsdJfifTransform)
   private
@@ -161,7 +141,6 @@ type
   TsdTransformYCbCrToBGRA = class(TsdJfifFwdTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function DstCellStride: integer; override;
   end;
 
   // Y-Cb-Cr (24bit) to gray (8it) colour transform. The Y channel is used
@@ -169,7 +148,6 @@ type
   TsdTransformYCbCrToGray = class(TsdJfifFwdTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function DstCellStride: integer; override;
   end;
 
   // Y-Cb-Cr-A (32bit) to BGR (24bit) colour transform. It assumes that
@@ -178,14 +156,12 @@ type
   TsdTransformYCbCrAToBGR = class(TsdJfifFwdTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
   end;
 
   // YCbCrK to BGR. YCbCr is first converted to CMY, then CMYK is converted to RGB
   TsdTransformYCbCrKToBGR = class(TsdJfifFwdTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
   end;
 
   // Y-Cb-Cr-A (32bit) to BGRA (32bit) colour transform. It assumes that
@@ -194,24 +170,18 @@ type
   TsdTransformYCbCrAToBGRA = class(TsdJfifFwdTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // CMYK (32bit) to BGR (24bit) colour transform.
   TsdTransformCMYKToBGR = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // CMYK (32bit) to BGR (24bit) colour transform, Adobe specific.
   TsdTransformCMYKToBGR_Adobe = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // YCCK (32bit) to BGR (24bit) colour transform. The CMY channels are coded as
@@ -219,7 +189,6 @@ type
   TsdTransformYCCKToBGR = class(TsdJfifFwdTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
   end;
 
   // YCCK to BGR color transform, as Adobe does it. Experimental status!
@@ -231,7 +200,6 @@ type
   public
     constructor Create; override;
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
   end;
 
   // Gray (8bit) to BGR (24bit) transform. The R, G and B channels are all set
@@ -239,8 +207,6 @@ type
   TsdTransformGrayToBGR = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // Gray + Alpha (16bit) to BGR (24bit) transform. The R, G and B channels are all set
@@ -248,8 +214,6 @@ type
   TsdTransformGrayAToBGR = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // Gray + Alpha (16bit) to BGRA (32bit) transform. The R, G and B channels are all set
@@ -257,8 +221,6 @@ type
   TsdTransformGrayAToBGRA = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // RGB (24bit) to BGRA (32bit) transform. The output alpha (A) channel is
@@ -266,33 +228,27 @@ type
   TsdTransformRGBToBGRA = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // RGBA (32bit) to BGR (24bit) transform. The input alpha (A) channel is ignored.
   TsdTransformRGBAToBGR = class(TsdColorTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // BGRA (32bit) to BGR (24bit) transform. This transform uses a parameter,
   // BkColor (TColor) that is used to fill the background, while the colors are
   // blended using the "over" operator. The background color by default is clWhite.
-  // This routine assumes alpha pre-multiplied colors.
+  // This routine assumes alpha pre-multiplied colors. 
   TsdTransformBGRAToBGR = class(TsdColorTransform)
   private
     FBkColor: cardinal;
-    procedure SetBkColor(const Value: cardinal);
-    function GetBkColor: cardinal;
+    procedure SetBkColor(const Value: TsdColor);
+    function GetBkColor: TsdColor;
   public
     constructor Create; override;
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    property BkColor: cardinal read GetBkColor write SetBkColor;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
+    property BkColor: TsdColor read GetBkColor write SetBkColor;
   end;
 
   // RGB (24bit) to Y-Cb-Cr (24bit) colour transform. It assumes that
@@ -308,7 +264,6 @@ type
   TsdTransformBGRToGray = class(TsdJfifInvTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function DstCellStride: integer; override;
   end;
 
   // RGBA (32bit) to Y-Cb-Cr-A (32bit) colour transform. It assumes that
@@ -317,8 +272,6 @@ type
   TsdTransformBGRAToYCbCrA = class(TsdJfifInvTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // RGBA (32bit) to Y-Cb-Cr (24bit) colour transform. It assumes that
@@ -327,12 +280,10 @@ type
   TsdTransformBGRAToYCbCr = class(TsdJfifInvTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function SrcCellStride: integer; override;
   end;
 
   // CIE L*a*b* (24bit) to BGR (24bit), using parameters
-  // - based on 24bit (3*8 bit) nulltransform
-  TsdTransformCIELabToBGR = class(TsdNullTransform24bit)
+  TsdTransformCIELabToBGR = class(TsdColorTransform)
   private
     FXw: double;
     FYw: double;
@@ -378,8 +329,6 @@ type
     function Clip(AValue: integer): integer;
   public
     constructor Create; override;
-    function SrcCellStride: integer; override;
-    function DstCellStride: integer; override;
   end;
 
   // Abstract YUV forward transform
@@ -405,7 +354,6 @@ type
   TsdTransformYUVToCMYK = class(TsdYuvFwdTransform)
   public
     procedure Transform(Source, Dest: pointer; Count: integer); override;
-    function DstCellStride: integer; override;
   end;
 
   // Abstract YUV inverse transform
@@ -458,32 +406,12 @@ end;
 
 { TsdNullTransform16bit }
 
-function TsdNullTransform16bit.DstCellStride: integer;
-begin
-  Result := 2;
-end;
-
-function TsdNullTransform16bit.SrcCellStride: integer;
-begin
-  Result := 2;
-end;
-
 procedure TsdNullTransform16bit.Transform(Source, Dest: pointer; Count: integer);
 begin
   Move(Source^, Dest^, Count * 2);
 end;
 
 { TsdNullTransform24bit }
-
-function TsdNullTransform24bit.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
-function TsdNullTransform24bit.SrcCellStride: integer;
-begin
-  Result := 3;
-end;
 
 procedure TsdNullTransform24bit.Transform(Source, Dest: pointer; Count: integer);
 begin
@@ -492,32 +420,12 @@ end;
 
 { TsdNullTransform32bit }
 
-function TsdNullTransform32bit.DstCellStride: integer;
-begin
-  Result := 4;
-end;
-
-function TsdNullTransform32bit.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
-
 procedure TsdNullTransform32bit.Transform(Source, Dest: pointer; Count: integer);
 begin
   Move(Source^, Dest^, Count * 4);
 end;
 
 { TsdTransformInverseGray8bit }
-
-function TsdTransformInverseGray8bit.DstCellStride: integer;
-begin
-  Result := 1;
-end;
-
-function TsdTransformInverseGray8bit.SrcCellStride: integer;
-begin
-  Result := 1;
-end;
 
 procedure TsdTransformInverseGray8bit.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -535,16 +443,6 @@ begin
 end;
 
 { TsdTransformInvertTriplet24bit }
-
-function TsdTransformInvertTriplet24bit.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
-function TsdTransformInvertTriplet24bit.SrcCellStride: integer;
-begin
-  Result := 3;
-end;
 
 procedure TsdTransformInvertTriplet24bit.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -609,18 +507,6 @@ constructor TsdJfifTransform.Create;
 begin
   inherited Create;
   FColorConvScale := 1 shl 10;
-end;
-
-function TsdJfifTransform.DstCellStride: integer;
-begin
-  // these are defaults, can be overridden
-  Result := 3;
-end;
-
-function TsdJfifTransform.SrcCellStride: integer;
-begin
-  // these are defaults, can be overridden
-  Result := 3;
 end;
 
 { TsdJfifFwdTransform }
@@ -696,11 +582,6 @@ end;
 
 { TsdTransformYCbCrToRGBA }
 
-function TsdTransformYCbCrToBGRA.DstCellStride: integer;
-begin
-  Result := 4;
-end;
-
 procedure TsdTransformYCbCrToBGRA.Transform(Source, Dest: pointer; Count: integer);
 var
   R, G, B, A, Y, Cb, Cr: PByte;
@@ -737,11 +618,6 @@ end;
 
 { TsdTransformYCbCrToGray }
 
-function TsdTransformYCbCrToGray.DstCellStride: integer;
-begin
-  Result := 1;
-end;
-
 procedure TsdTransformYCbCrToGray.Transform(Source, Dest: pointer; Count: integer);
 var
   G, Y: PByte;
@@ -761,11 +637,6 @@ begin
 end;
 
 { TsdTransformYCbCrAToRGB }
-
-function TsdTransformYCbCrAToBGR.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformYCbCrAToBGR.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -800,16 +671,6 @@ begin
 end;
 
 { TsdTransformYCbCrAToRGBA }
-
-function TsdTransformYCbCrAToBGRA.DstCellStride: integer;
-begin
-  Result := 4;
-end;
-
-function TsdTransformYCbCrAToBGRA.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformYCbCrAToBGRA.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -847,11 +708,6 @@ begin
 end;
 
 { TsdTransformYCbCrKToRGB }
-
-function TsdTransformYCbCrKToBGR.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformYCbCrKToBGR.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -898,16 +754,6 @@ end;
 
 { TsdTransformCMYKToRGB }
 
-function TsdTransformCMYKToBGR.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
-function TsdTransformCMYKToBGR.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
-
 procedure TsdTransformCMYKToBGR.Transform(Source, Dest: pointer; Count: integer);
 var
   R, G, B, C, M, Y, K: PByte;
@@ -950,16 +796,6 @@ begin
 end;
 
 { TsdTransformCMYKToBGR_Adobe }
-
-function TsdTransformCMYKToBGR_Adobe.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
-function TsdTransformCMYKToBGR_Adobe.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformCMYKToBGR_Adobe.Transform(Source, Dest: pointer; Count: integer);
 // When all in range [0..1]
@@ -1030,11 +866,6 @@ begin
 end;
 
 { TsdTransformYCCKToBGR }
-
-function TsdTransformYCCKToBGR.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformYCCKToBGR.Transform(Source, Dest: pointer; Count: integer);
 // YCCK is a colorspace where the CMY part of CMYK is first converted to RGB, then
@@ -1171,22 +1002,7 @@ begin
   end;
 end;
 
-function TsdTransformYCCKToBGR_Adobe.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
-
 { TsdTransformGrayToBGR }
-
-function TsdTransformGrayToBGR.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
-function TsdTransformGrayToBGR.SrcCellStride: integer;
-begin
-  Result := 1;
-end;
 
 procedure TsdTransformGrayToBGR.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -1214,16 +1030,6 @@ end;
 
 { TsdTransformGrayAToBGR }
 
-function TsdTransformGrayAToBGR.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
-function TsdTransformGrayAToBGR.SrcCellStride: integer;
-begin
-  Result := 2;
-end;
-
 procedure TsdTransformGrayAToBGR.Transform(Source, Dest: pointer; Count: integer);
 var
   R, G, B, Y: PByte;
@@ -1249,16 +1055,6 @@ begin
 end;
 
 { TsdTransformGrayAToBGRA }
-
-function TsdTransformGrayAToBGRA.DstCellStride: integer;
-begin
-  Result := 4;
-end;
-
-function TsdTransformGrayAToBGRA.SrcCellStride: integer;
-begin
-  Result := 2;
-end;
 
 procedure TsdTransformGrayAToBGRA.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -1289,16 +1085,6 @@ end;
 
 { TsdTransformRGBToBGRA }
 
-function TsdTransformRGBToBGRA.DstCellStride: integer;
-begin
-  Result := 4;
-end;
-
-function TsdTransformRGBToBGRA.SrcCellStride: integer;
-begin
-  Result := 3;
-end;
-
 procedure TsdTransformRGBToBGRA.Transform(Source, Dest: pointer; Count: integer);
 var
   R, G, B, A, Rs, Gs, Bs: PByte;
@@ -1328,16 +1114,6 @@ begin
 end;
 
 { TsdTransformRGBAToBGR }
-
-function TsdTransformRGBAToBGR.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
-function TsdTransformRGBAToBGR.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformRGBAToBGR.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -1371,12 +1147,12 @@ begin
   FBkColor := $FFFFFFFF;
 end;
 
-function TsdTransformBGRAToBGR.GetBkColor: cardinal;
+function TsdTransformBGRAToBGR.GetBkColor: TsdColor;
 begin
-  Result := FBkColor and $00FFFFFF;
+  Result := TsdColor(FBkColor and $00FFFFFF);
 end;
 
-procedure TsdTransformBGRAToBGR.SetBkColor(const Value: cardinal);
+procedure TsdTransformBGRAToBGR.SetBkColor(const Value: TsdColor);
 begin
   FBkColor := Value or $FF000000;
 end;
@@ -1450,18 +1226,6 @@ begin
 end;
 
 
-function TsdTransformBGRAToBGR.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
-function TsdTransformBGRAToBGR.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
-
-{ TsdJfifInvTransform }
-
 procedure TsdJfifInvTransform.InitRGBToYCbCrTables;
 {  RGB to YCbCr conversion: These constants come from JFIF spec
 
@@ -1530,11 +1294,6 @@ end;
 
 { TsdTransformBGRToGray }
 
-function TsdTransformBGRToGray.DstCellStride: integer;
-begin
-  Result := 1;
-end;
-
 procedure TsdTransformBGRToGray.Transform(Source, Dest: pointer; Count: integer);
 var
   R, G, B, Y: PByte;
@@ -1558,16 +1317,6 @@ begin
 end;
 
 { TsdTransformBGRAToYCbCrA }
-
-function TsdTransformBGRAToYCbCrA.DstCellStride: integer;
-begin
-  Result := 4;
-end;
-
-function TsdTransformBGRAToYCbCrA.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformBGRAToYCbCrA.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -1604,11 +1353,6 @@ begin
 end;
 
 { TsdTransformBGRAToYCbCr }
-
-function TsdTransformBGRAToYCbCr.SrcCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformBGRAToYCbCr.Transform(Source, Dest: pointer; Count: integer);
 var
@@ -1803,22 +1547,12 @@ begin
   InitScaleFact;
 end;
 
-function TsdYuvTransform.DstCellStride: integer;
-begin
-  Result := 3;
-end;
-
 procedure TsdYuvTransform.InitScaleFact;
 begin
   FPrecision := 10;
   FScaleFact := 1 shl FPrecision;
   FBias := (FPrecision - 1);
   FMaxValue := $FF * FScaleFact;
-end;
-
-function TsdYuvTransform.SrcCellStride: integer;
-begin
-  Result := 3;
 end;
 
 { TsdYuvFwdTransform }
@@ -1928,11 +1662,6 @@ begin
 end;
 
 { TsdTransformYUVToCMYK }
-
-function TsdTransformYUVToCMYK.DstCellStride: integer;
-begin
-  Result := 4;
-end;
 
 procedure TsdTransformYUVToCMYK.Transform(Source, Dest: pointer;
   Count: integer);

@@ -18,8 +18,9 @@ unit sdBitmapConversionWin;
 interface
 
 uses
-  {$ifdef FPC}IntfGraphics, Lindows,{$else}Windows,{$endif} //requires windows hpalette
-  SysUtils, Controls, Graphics, sdMapIterator;
+  {$ifdef MSWINDOWS}Windows,{$endif}
+  {$ifdef lcl}IntfGraphics, GraphType,{$endif}
+  SysUtils, Graphics, sdMapIterator;
 
 type
 
@@ -56,7 +57,7 @@ procedure BitmapOperation(Src, Dst: TBitmap; AOperation: TsdMapOperation);
 
 procedure FillBitmap8bit(AMap: TsdMapIterator; AValue: byte);
 
-procedure SetBitmap8bitPalette(const Palette: T8bitPaletteArray; Bitmap: TBitmap; NumColors: integer);
+procedure SetBitmap8bitPalette(const Palette: T8bitPaletteArray; Bitmap: TBitmap; NumCols: integer);
 
 // Set the palette of a pf8bit bitmap to a grayscale palette, starting at [0, 0, 0] for
 // index 0 and ending at [255, 255, 255] for index 255.
@@ -86,8 +87,24 @@ resourcestring
 implementation
 
 function GetBitmapScanline(ABitmap: TBitmap; Y: integer): pointer;
+{$ifdef fpc}
+//todo: this is not correct, needs rework!!
+var
+  LI: TLazIntfImage;
+{$endif fpc}
 begin
+{$ifdef fpc}
+  LI := TLazIntfImage.Create(0, 0, [riqfRGB]);
+  LI.LoadFromBitmap(ABitmap.Handle, ABitmap.MaskHandle, ABitmap.Width, ABitmap.Height);
+  //LI := ABitmap.CreateIntfImage;
+  try
+    Result := LI.GetDataLineStart(Y);
+  finally
+    LI.Free;
+  end;
+{$else fpc}
   Result := ABitmap.ScanLine[Y];
+{$endif fpc}
 end;
 
 function WinPixelFormatFromByteCount(AByteCount: integer): TPixelFormat;
@@ -163,7 +180,6 @@ var
 begin
   if (SIter.CellStride < 3) or (DIter.CellStride < 1) then
     raise Exception.Create('Invalid cellstride');
-
   // RGB are layed out in memory as BGR
   case AMethod of
   gcRed:   SIter.IncrementMap(2);
@@ -173,34 +189,27 @@ begin
   S := SIter.First;
   D := DIter.First;
   case AMethod of
-
   gcUniform:
     while assigned(S) do
     begin
       Val := S^;
-      inc(S);
-      inc(Val, S^);
-      inc(S);
-      inc(Val, S^);
+      inc(S); inc(Val, S^);
+      inc(S); inc(Val, S^);
       D^ := Val div 3;
       S := SIter.Next;
       D := DIter.Next;
     end;
-
   gcWeighted:
     // (R * 61 + G * 174 + B * 21) / 256
     while assigned(S) do
     begin
       Val := S^ * 21;
-      inc(S);
-      inc(Val, S^ * 174);
-      inc(S);
-      inc(Val, S^ * 61);
+      inc(S); inc(Val, S^ * 174);
+      inc(S); inc(Val, S^ * 61);
       D^ := Val shr 8;
       S := SIter.Next;
       D := DIter.Next;
     end;
-
   gcRed, gcGreen, gcBlue:
     while assigned(S) do
     begin
@@ -256,7 +265,6 @@ begin
       Dst.Height := Src.Height;
     end;
   end;
-
   // Create bitmap iterators
   SI := TsdMapIterator.Create;
   DI := TsdMapIterator.Create;
@@ -274,32 +282,35 @@ begin
   end;
 end;
 
-procedure SetBitmap8bitPalette(const Palette: T8bitPaletteArray; Bitmap: TBitmap; NumColors: integer);
-// Add a N-color palette to a bitmap
+procedure SetBitmap8bitPalette(const Palette: T8bitPaletteArray; Bitmap: TBitmap; NumCols: integer);
+// Add a 256-color palette to a bitmap
 var
   i, y: integer;
-  pal, pentry: pbyte;
+  pal: pointer;
+{$ifdef MSWINDOWS}
   hpal: HPALETTE;
+{$endif}
 begin
   if not assigned(Bitmap) then
     exit;
-
   // 8 bits per pixel
   Bitmap.PixelFormat := pf8bit;
 
   // Create a Win32 palette
-  GetMem(pal, sizeof(TLogPalette) + sizeof(TPaletteEntry) * NumColors);
+{$ifdef fpc}
+// todo!
+  pal := nil;
+{$else fpc}
+  {$R-}
+  GetMem(pal, sizeof(TLogPalette) + sizeof(TPaletteEntry) * NumCols);
   try
     PLogPalette(pal).palVersion := $300;
-    PLogPalette(pal).palNumEntries := NumColors;
-    pentry := pal;
-    inc(pentry, SizeOf(TLogPalette) - SizeOf(TPaletteEntry));
-    for i := 0 to NumColors - 1 do
+    PLogPalette(pal).palNumEntries := 256;
+    for i := 0 to 255 do
     begin
-      PPaletteEntry(pentry).peRed   := Palette[i].R;
-      PPaletteEntry(pentry).peGreen := Palette[i].G;
-      PPaletteEntry(pentry).peBlue  := Palette[i].B;
-      inc(pentry, SizeOf(TPaletteEntry));
+      PLogPalette(pal).palPalEntry[i].peRed   := Palette[i].R;
+      PLogPalette(pal).palPalEntry[i].peGreen := Palette[i].G;
+      PLogPalette(pal).palPalEntry[i].peBlue  := Palette[i].B;
     end;
     hpal := CreatePalette(PLogPalette(pal)^);
     if hpal <> 0 then
@@ -307,6 +318,8 @@ begin
   finally
     FreeMem(pal);
   end;
+  {$R+}
+{$endif fpc}
 
   // Fill bitmap with background color
   for y := 0 to Bitmap.Height - 1 do

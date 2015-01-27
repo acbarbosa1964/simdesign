@@ -6,21 +6,6 @@ Maintained by Nils Haeck (SimDesign BV)
 * = enhancement
 + = addition
 
-Version 1.33 (06aug2012)
-! Fixed initialisation problem in Tsd8bitHuffmanEncoder.OptimiseHuffmanFromHistogram
-  and lossless transforms now work.
-* Checked demos jkpegtest, simple, tiledemo, viewer and viewer32
-
-Version 1.32 (05jul2011)
-* Separated TsdJpegImage.LoadJpeg and TsdJpegImage.UpdateBitmap
-+ events TsdJpegImage.OnBeforeLossless and TsdJpegImage.OnAfterLossless
-+ added lossless operations to class TNativeJpg:
-  procedure LosslessRotate90;
-  procedure LosslessRotate180;
-  procedure LosslessRotate270;
-+ added demo code specifically for Graphics32: see viewer32 demo  
-
-
 Version 1.31 (07jun2011)
 * Fixed and updated TileDemo
 * Fixed and updated Viewer

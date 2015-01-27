@@ -16,7 +16,7 @@ unit sdStreams;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, sdDebug;
 
 type
 
@@ -41,10 +41,6 @@ type
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
     function Seek(Offset: Longint; Origin: Word): Longint; override;
-    procedure LoadFromFile(AFilename: string);
-    procedure LoadFromStream(Stream: TStream);
-    procedure SaveToFile(AFilename: string);
-    procedure SaveToStream(Stream: TStream);
     property Memory: Pointer read FMemory;
     property Size: longint read FSize write SetSize;
   end;
@@ -107,28 +103,6 @@ begin
   inherited;
 end;
 
-procedure TsdFastMemStream.LoadFromFile(AFilename: string);
-var
-  Stream: TStream;
-begin
-  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
-  try
-    LoadFromStream(Stream);
-  finally
-    Stream.Free;
-  end;
-end;
-
-procedure TsdFastMemStream.LoadFromStream(Stream: TStream);
-var
-  Count: Longint;
-begin
-  Stream.Position := 0;
-  Count := Stream.Size;
-  SetSize(Count);
-  if Count <> 0 then Stream.ReadBuffer(FMemory^, Count);
-end;
-
 function TsdFastMemStream.Read(var Buffer; Count: Integer): Longint;
 begin
   if (FPosition >= 0) and (Count >= 0) then
@@ -144,23 +118,6 @@ begin
     end;
   end;
   Result := 0;
-end;
-
-procedure TsdFastMemStream.SaveToFile(AFilename: string);
-var
-  Stream: TStream;
-begin
-  Stream := TFileStream.Create(AFileName, fmCreate);
-  try
-    SaveToStream(Stream);
-  finally
-    Stream.Free;
-  end;
-end;
-
-procedure TsdFastMemStream.SaveToStream(Stream: TStream);
-begin
-  if FSize <> 0 then Stream.WriteBuffer(FMemory^, FSize);
 end;
 
 function TsdFastMemStream.Seek(Offset: Integer; Origin: Word): Longint;

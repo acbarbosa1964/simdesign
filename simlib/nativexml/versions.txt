@@ -1,76 +1,10 @@
 This file contains a list of all bugfixes, additions and enhancements to NativeXml.
 
-Maintained by Nils Haeck (SimDesign BV owner)
+Maintained by Nils Haeck (SimDesign BV)
 
 ! = bugfix
 * = enhancement
 + = addition
-
-Version 4.09 (15aug2013)
-* Replaced separate units sdStreams, sdStringTable and sdDebug
-  by code in NativeXml.pas itself
-+ Improved sdEscapeString function
-
-Version 4.07 (03oct2012)
-! Improved canonicalization (c14n), now works recursively and
-  returns # expanded entities
-! Fixed up a rangecheck warning in sdUtf8ToWideBuffer
-! cleaned up some compiler directives
-
-Version 4.06 (16aug2012)
-+ Added TXmlNode.NodeRemoveEx (allows removal of the line with
-  the node instead of just the node itself) - experimental
-
-Version 4.05 (11aug2012)
-! Reimplemented/Fixed sdNormaliseEol function
-+ Readded (hex) character replacement
-
-Version 4.04 (06aug2012)
-! Updated simdesign.inc to add DXE2
-! Fixed bug in DirectNodeCount
-! Fixed (removed) erratic un-normalisation
-! removed erratic $ifdef in NativeXmlObjectStorage.pas
-
-Version 4.03 (13jul2012)
-* Core End-Of-Line style is LF, defaults CR-LF, LF and CR for Windows, Linux, Mac
-  respectively
-! Fixed EOL bug in source (thx Christian)
-* TsdChardata.GetCoreValue and .GetPlatformValue
-
-Version 4.02 (05nov2011)
-* default end-of-line style now esCRLF (uses CR-LF combination by default for Windows)
-+ form storage in editor (both default and XE versions) uses NativeXml itself :)
-+ added support for EolStyle = esCR (for use with the Mac)
-+ added separator when writing declaration, skip separator when parsing declaration
-! fixed problems in binary xml. Consequence: New binary xml version v2. 
-* NativeXml (and binary xml) now supports xml-stylesheet correctly
-* binary xml now supports doctype correctly
-* fixed attribute processing in NativeXmlStorage.pas (thanks RKS)
-
-Version 4.01 (27jul2011)
-+ added binary xml to the TNativeXml class itself
-+ added methods BinaryMethod and AesKeyHex
-* improved FixStructuralErrors.. NativeXml can now load html usually
-* improved method sdUnNormalizeEol (faster now)
-! fixed property handlers for ExternalEncoding and ExternalCodepage
-+ updated DtpEditor XE
-
-Version 4.00 (23jul2011)
-+ implemented binary xml (BXM)
-+ added ValueAsDate and ValueAsTime besides ValueAsDateTime
-+ added SplitSecondDigits parameter (default = 0)
-* constructor CreateParentNear instead of CreateParentBefore/After
-  to avoid clash with CppBuilder
-+ added zlib compression and AES encryption for BXM in the demo
-
-Version 3.32 (07jul2011)
-! re-added D5 compatibility
-! fixed TNativeXml.New method
-
-Version 3.31 (29jun2011)
-! fixed string table (part of lowlevel string processing of NativeXml)
-* integrated End-Of-Line normalisation in the XML parser
-* placed NativeXmlC14N.pas in NativeXml.pas, TNativeXml.Canonicalize integrated
 
 Version 3.30 (20may2011)
 * reimplemented DropCommentsOnParse

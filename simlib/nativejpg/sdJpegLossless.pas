@@ -14,7 +14,7 @@ unit sdJpegLossless;
 interface
 
 uses
-  Classes, SysUtils, Graphics, NativeXml, sdJpegTypes, sdJpegMarkers;
+  Classes, SysUtils, Graphics, sdJpegTypes, sdJpegMarkers, sdDebug;
 
 type
 
@@ -27,18 +27,16 @@ const
 
 type
 
-  TsdLosslessOperation = class(TsdDebugPersistent)
+  TsdLosslessOperation = class(TDebugPersistent)
   private
     //FOwner: TObject; // pointer to TsdJpegFormat
     FUpdateMetadata: boolean;
     FBuffer: array of smallint;
     FHasContrastChange: boolean;
     FContrast: double;
-    FOnBeforeLossless: TsdUpdateEvent;
-    FOnAfterLossless: TsdUpdateEvent;
+    FOnUpdate: TsdUpdateEvent;
   protected
-    procedure DoBeforeLossless;
-    procedure DoAfterLossless;
+    procedure DoUpdate; 
     function GetBlockCoder: TObject;
     function GetIntensityMapCount: integer;
     procedure InfoTranspose;
@@ -90,10 +88,8 @@ type
     // includes e.g. the Exif rotation flag, JFIF/EXIF width/height, and JFIF thumbnail
     // (not implemented at this moment).
     property UpdateMetadata: boolean read FUpdateMetadata write FUpdateMetadata;
-    // connect to this event to process code before a lossless operation
-    property OnBeforeLossless: TsdUpdateEvent read FOnBeforeLossless write FOnBeforeLossless;
-    // connect to this event to process code after a lossless operation
-    property OnAfterLossless: TsdUpdateEvent read FOnAfterLossless write FOnAfterLossless;
+    // connect to this event to see when the operation is updated
+    property OnUpdate: TsdUpdateEvent read FOnUpdate write FOnUpdate;
   end;
 
 implementation
@@ -109,7 +105,6 @@ var
   Coder: TsdJpegBlockCoder;
   Map: TsdJpegBlockMap;
 begin
-  DoBeforeLossless;
   RemoveDHTMarkers;
   if FHasContrastChange then
   begin
@@ -130,7 +125,7 @@ begin
       continue;
     MapAdjustDCCoef(Map, ABrightness);
   end;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 procedure TsdLosslessOperation.AdjustBrightnessContrast(ABrightness, AContrast: double);
@@ -139,7 +134,6 @@ var
   Coder: TsdJpegBlockCoder;
   Map: TsdJpegBlockMap;
 begin
-  DoBeforeLossless;
   RemoveDHTMarkers;
   FHasContrastChange := True;
   FContrast := AContrast;
@@ -157,7 +151,7 @@ begin
       continue;
     MapAdjustDCandACCoef(Map, ABrightness, AContrast);
   end;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 procedure TsdLosslessOperation.Clear;
@@ -210,7 +204,7 @@ end;
 constructor TsdLosslessOperation.Create(AOwner: TObject);
 begin
   inherited Create;
-  FOwner := TsdDebugComponent(AOwner);
+  FOwner := TDebugComponent(AOwner);
 end;
 
 procedure TsdLosslessOperation.Crop(var ALeft, ATop, ARight, ABottom: integer);
@@ -221,7 +215,6 @@ var
   L, T, W, H: integer;
   Map: TsdJpegBlockMap;
 begin
-  DoBeforeLossless;
   DoDebugOut(Self, wsInfo, '"lossless" crop');
   RemoveDHTMarkers;
   Coder := TsdJpegBlockCoder(GetBlockCoder);
@@ -265,37 +258,29 @@ begin
     if not assigned(Map) then continue;
     MapCropMcuBlocks(Map, L, T, W, H);
   end;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
-procedure TsdLosslessOperation.DoBeforeLossless;
+procedure TsdLosslessOperation.DoUpdate;
 begin
-  if assigned(FOnBeforeLossless) then
-    FOnBeforeLossless(Self);
-end;
-
-procedure TsdLosslessOperation.DoAfterLossless;
-begin
-  if assigned(FOnAfterLossless) then
-    FOnAfterLossless(Self);
+  if assigned(FOnUpdate) then
+    FOnUpdate(Self);
 end;
 
 procedure TsdLosslessOperation.FlipHorizontal;
 begin
-  DoBeforeLossless;
   DoDebugOut(Self, wsInfo, 'flip horizontal');
   RemoveDHTMarkers;
   MapFlipHorz;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 procedure TsdLosslessOperation.FlipVertical;
 begin
-  DoBeforeLossless;
   DoDebugOut(Self, wsInfo, 'flip vertical');
   RemoveDHTMarkers;
   MapFlipVert;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 function TsdLosslessOperation.GetBlockCoder: TObject;
@@ -623,54 +608,49 @@ end;
 
 procedure TsdLosslessOperation.Rotate180;
 begin
-  DoBeforeLossless;
   DoDebugOut(Self, wsInfo, 'lossless rotate 180deg');
   RemoveDHTMarkers;
   MapFlipHorz;
   MapFlipVert;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 procedure TsdLosslessOperation.Rotate270;
 begin
-  DoBeforeLossless;
   DoDebugOut(Self, wsInfo, 'lossless rotate 270deg');
   RemoveDHTMarkers;
   InfoTranspose;
   MapTranspose;
   MapFlipVert;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 procedure TsdLosslessOperation.Rotate90;
 begin
-  DoBeforeLossless;
   DoDebugOut(Self, wsInfo, 'lossless rotate 90deg');
   RemoveDHTMarkers;
   InfoTranspose;
   MapTranspose;
   MapFlipHorz;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 procedure TsdLosslessOperation.Touch;
 begin
-  DoBeforeLossless;
   DoDebugOut(Self, wsInfo, 'lossless touch');
   RemoveDHTMarkers;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 procedure TsdLosslessOperation.Transpose;
 begin
-  DoBeforeLossless;
   DoDebugOut(Self, wsInfo, 'lossless transpose');
   RemoveDHTMarkers;
   // Transpose parameters contained in info
   InfoTranspose;
   // Transpose maps
   MapTranspose;
-  DoAfterLossless;
+  DoUpdate;
 end;
 
 end.

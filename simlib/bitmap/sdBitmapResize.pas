@@ -34,9 +34,6 @@ procedure CreateDivision(Num, Den: integer; var Start, Size: array of integer);
 // these should be equal for Source and Dest.
 procedure DownscaleBitmapWin(Source, Dest: TBitmap);
 
-// for compatibility with older versions, there is the '24' version.
-procedure DownscaleBitmap24(Source, Dest: TBitmap);
-
 procedure UpscaleBitmap24(Source, Dest: TBitmap);
 
 // Clear the Bitmap with value in Color
@@ -177,16 +174,6 @@ begin
     FreeMem(Target);
   end;
 
-end;
-
-procedure DownscaleBitmap24(Source, Dest: TBitmap);
-begin
-  // assertions
-  if not assigned(Source) or not assigned(Dest) then
-    exit;
-  if Source.PixelFormat <> pf24bit then
-    exit;
-  DownscaleBitmapWin(Source, Dest);
 end;
 
 procedure UpscaleBitmap24(Source, Dest: TBitmap);

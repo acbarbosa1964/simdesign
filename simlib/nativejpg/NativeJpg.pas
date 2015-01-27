@@ -1,5 +1,13 @@
 { unit NativeJpg.pas
 
+  Author: Nils Haeck M.Sc.
+  Copyright (c) 2007 SimDesign B.V.
+  Creation Date: 24Apr2007
+  More information: www.simdesign.nl or n.haeck@simdesign.nl
+
+  This software may ONLY be used or replicated in accordance with
+  the LICENSE found in this source distribution.
+
   Description:
 
   NativeJpg is a library that provides full functionality for Jpeg images (*.jpg,
@@ -13,26 +21,6 @@
 
   The actual Jpeg encoding/decoding functionality is in files sdJpeg*.pas, most
   notably sdJpegImage.pas.
-
-  simple example:
-
-    Jpeg := TsdJpegGraphic.Create;
-    try
-      Jpeg.LoadFromFile('image1.jpg');
-      Jpeg.LosslessRotate90;
-      Jpeg.SaveToFile('image2.jpg');
-    finally
-      Jpeg.Free;
-    end;
-
-  Author: Nils Haeck M.Sc.
-  Creation Date: 24Apr2007
-  Copyright (c) 2007 SimDesign B.V.
-
-  This software may ONLY be used or replicated in accordance with
-  the LICENSE found in this source distribution.
-
-  More information: www.simdesign.nl or n.haeck@simdesign.nl
 }
 unit NativeJpg;
 
@@ -57,7 +45,7 @@ uses
   sdMapIterator, sdBitmapConversionWin, sdBitmapResize,
 
   // general
-  sdStreams, NativeXml;
+  sdStreams, sdDebug;
 
 type
 
@@ -172,15 +160,6 @@ type
     property Image: TsdJpegImage read FImage;
     // connect to OnDebugOut to get debug info from TsdJpegGraphic
     property OnDebugOut: TsdDebugEvent read FOnDebugOut write FOnDebugOut;
-
-    // lossless procedures
-
-    // lossless rotation of the jpeg file over 90 degrees
-    procedure LosslessRotate90;
-    // lossless rotation of the jpeg file over 180 degrees
-    procedure LosslessRotate180;
-    // lossless rotation of the jpeg file over 270 degrees
-    procedure LosslessRotate270;
   end;
 
 implementation
@@ -316,7 +295,7 @@ var
 begin
   // FImage.LoadJpeg exposes OnCreate event that eventually
   // provides FBitmap in ImageCreateMap
-  FImage.LoadJpeg(AScale, True);
+  FImage.LoadJpeg(AScale);
 
   // width and height requirements
   if UseStretchDraw then
@@ -578,21 +557,6 @@ begin
   finally
     MS.Free;
   end;
-end;
-
-procedure TsdJpegGraphic.LosslessRotate90;
-begin
-  FImage.Lossless.Rotate90;
-end;
-
-procedure TsdJpegGraphic.LosslessRotate180;
-begin
-  FImage.Lossless.Rotate180;
-end;
-
-procedure TsdJpegGraphic.LosslessRotate270;
-begin
-  FImage.Lossless.Rotate270;
 end;
 
 initialization

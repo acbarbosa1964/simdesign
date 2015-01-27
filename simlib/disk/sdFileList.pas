@@ -17,7 +17,7 @@ unit sdFileList;
 interface
 
 uses
-  Classes, Contnrs, SysUtils, sdSortedLists;
+  Windows, Classes, Contnrs, SysUtils, sdSortedLists;
 
 type
 
@@ -112,17 +112,13 @@ begin
   // Need double 0 at end
   SourceFileName := FileName + #0#0;
 
-  DestFileName := IncludeTrailingPathDelimiter(DestDir) + ExtractFileName(FileName);
+  DestFileName := IncludeTrailingBackslash(DestDir) + ExtractFileName(FileName);
 
   with FileOpStruct do
   begin
-    {$ifdef UNICODE}
-    pFrom := pwidechar(Utf8ToWidestring(SourceFileName));
-    pTo   := pwidechar(Utf8ToWidestring(DestFileName));
-    {$else UNICODE}
+
     pFrom := pansichar(SourceFileName);
     pTo   := pansichar(DestFileName);
-    {$endif UNICODE}
 
     wFunc := FO_Move;
 
@@ -264,7 +260,7 @@ procedure TsdFileItem.SetFolder(const AFolder: string);
 var
   Fldr: string;
 begin
-  Fldr := IncludeTrailingPathDelimiter(AFolder);
+  Fldr := IncludeTrailingBackslash(AFolder);
   if Fldr = GetFolder then exit;
   FFolderIndex := FParent.FFolders.IndexOf(Folder);
   if FFolderIndex < 0 then
@@ -342,7 +338,7 @@ var
   Folder: string;
   Item: TsdFileItem;
 begin
-  Folder := IncludeTrailingPathDelimiter(AFolder);
+  Folder := IncludeTrailingBackslash(AFolder);
   FolderIndex := FFolders.IndexOf(Folder);
   if FolderIndex < 0 then
     FolderIndex := FFolders.Add(Folder);

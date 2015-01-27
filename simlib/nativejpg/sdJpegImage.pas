@@ -16,19 +16,19 @@ unit sdJpegImage;
 interface
 
 uses
-  Classes, SysUtils, NativeXml, Math,
+  Classes, SysUtils, Math,
 
   // nativejpg units
   sdJpegCoder, sdJpegMarkers, sdJpegBitstream, sdJpegTypes, sdJpegHuffman, sdJpegLossless,
 
   // general units
-  sdMapIterator, sdColorTransforms, sdStreams;
+  sdGraphicTypes, sdMapIterator, sdColorTransforms, sdStreams, sdDebug;
 
 const
 
   // Version number changes with updates. See "versions.txt" for a list of
   // updated features.
-  cNativeJpgVersion = '1.33';
+  cNativeJpgVersion = '1.31';
 
 
 type
@@ -40,6 +40,23 @@ type
     loTileMode      // If set, the loadfromstream only finds the start of each MCU tile
   );
   TsdJpegLoadOptions = set of TsdJpegLoadOption;
+
+  // ICC color profile class
+  TsdJpegICCProfile = class(TPersistent)
+  private
+    FData: array of byte;
+    function GetData: pointer;
+    function GetDataLength: integer;
+  public
+    procedure LoadFromStream(S: TStream);
+    procedure LoadFromFile(const AFileName: string);
+    procedure SaveToFile(const AFileName: string);
+    procedure SaveToStream(S: TStream);
+    procedure ReadFromMarkerList(AList: TsdJpegMarkerList);
+    procedure WriteToMarkerList(AList: TsdJpegMarkerList);
+    property Data: pointer read GetData;
+    property DataLength: integer read GetDataLength;
+  end;
 
   // Ask the application to create a map (usually a TBitmap in Win) based on AIterator:
   // width, height and cellstride (bytecount per pixel). AIterator must also be
@@ -63,7 +80,7 @@ type
   // gives access to a TsdLosslessOperation class with which you can perform
   // lossless operations on the Jpeg. The SaveOptions property gives access to
   // options used when saving the Jpeg.
-  TsdJpegImage = class(TsdDebugComponent)
+  TsdJpegImage = class(TDebugComponent)
   private
     // FOnDebugOut: TsdDebugEvent; this is already defined in TDebugComponent
     FDataSize: int64;
@@ -105,8 +122,7 @@ type
     function GetImageWidth: integer;
     function GetWidth: integer;
     procedure GetBitmapTileSize(AScale: TsdJpegScale; var AWidth, AHeight: integer);
-    procedure BeforeLosslessUpdate(Sender: TObject);
-    procedure AfterLosslessUpdate(Sender: TObject);
+    procedure LosslessUpdate(Sender: TObject);
     procedure AVI1MarkerCheck;
   protected
     procedure EntropyDecodeSkip(S: TStream);
@@ -120,6 +136,7 @@ type
     // color space in file and bitmap
     procedure GetColorTransformToBitmap(var AClass: TsdColorTransformClass;
       var AFormat: TsdPixelFormat);
+    class function GetDivisor(AScale: TsdJpegScale): integer;
     function HasSamples: boolean;
     function HasCoefficients: boolean;
     function VerifyBitmapColorSpaceForSave: TsdJpegColorSpace;
@@ -136,9 +153,8 @@ type
     procedure GetBitmapSize(AScale: TsdJpegScale; var AWidth, AHeight: integer);
 
     // After the image is loaded from stream, LoadJpeg actually decodes the
-    // image. If DoCreateBitmap is true, it creates and renders the bitmap, thru
-    // OnCreateMap
-    procedure LoadJpeg(AScale: TsdJpegScale; DoCreateBitmap: boolean);
+    // image and renders the bitmap, thru OnCreateMap
+    procedure LoadJpeg(AScale: TsdJpegScale);
 
     // Load a Jpeg image from the file AFileName.
     procedure LoadFromFile(const AFileName: string);
@@ -176,8 +192,6 @@ type
     // Only one pass over the data is required, but the resulting jpeg will
     // be saved with standard Huffman tables (as provided in the Jpeg specification)
     procedure SaveBitmapStripByStrip(AWidth, AHeight: integer);
-    // call UpdateBitmap after calling LoadJpeg(Scale, False)
-    function UpdateBitmap: TObject;
     // All metadata markers will be extracted from the file, and put in AList.
     // AList must be initialized (AList := TsdJpegMarkerList.Create)
     procedure ExtractMetadata(AList: TsdJpegMarkerList);
@@ -246,8 +260,8 @@ type
     property LoadOptions: TsdJpegLoadOptions read FLoadOptions write FLoadOptions;
     // Set LoadScale to anything other than jsFull to load a downscaled image, which
     // will be faster than the full image. jsDiv2 will download an image that is
-    // half the size in X and Y, jsDiv4 will be quarter size, jsDiv8 will be 1/8
-    // size.
+    // half the size in X and Y, jsDiv4 will be quarter size, jsDiv8 will be one
+    // eight size.
     property LoadScale: TsdJpegScale read FLoadScale write FLoadScale;
     // The colorspace present in the file. If jcAutoDetect (default), the software will
     // try to detect which colorspace the JPEG file contains. This info is present
@@ -284,7 +298,7 @@ type
     property OnCreateMap: TsdCreateMapEvent read FOnCreateMap write FOnCreateMap;
   end;
 
-  TsdJpegSaveOptions = class(TsdDebugPersistent)
+  TsdJpegSaveOptions = class(TDebugPersistent)
   private
     FOwner: TsdJpegImage;
     FQuality: TsdJpegQuality;
@@ -306,6 +320,130 @@ type
   end;
 
 implementation
+
+{ TsdJpegICCProfile }
+
+function TsdJpegICCProfile.GetData: pointer;
+begin
+  if length(FData) > 0 then
+    Result := @FData[0]
+  else
+    Result := nil;
+end;
+
+function TsdJpegICCProfile.GetDataLength: integer;
+begin
+  Result := length(FData);
+end;
+
+procedure TsdJpegICCProfile.LoadFromFile(const AFileName: string);
+var
+  F: TFileStream;
+begin
+  F := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  try
+    LoadFromStream(F);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TsdJpegICCProfile.LoadFromStream(S: TStream);
+begin
+  SetLength(FData, S.Size);
+  S.Position := 0;
+  S.Read(FData[0], S.Size);
+end;
+
+procedure TsdJpegICCProfile.ReadFromMarkerList(AList: TsdJpegMarkerList);
+var
+  i, j, DataLen, MarkerCount: integer;
+  Markers: array of TsdICCProfileMarker;
+  M: TsdICCProfileMarker;
+  P: PByte;
+begin
+  // Determine total length and get list of markers
+  DataLen := 0;
+  MarkerCount := 0;
+  SetLength(Markers, AList.Count);
+  for i := 0 to AList.Count - 1 do
+    if AList[i] is TsdICCProfileMarker then
+    begin
+      M := TsdICCProfileMarker(AList[i]);
+      if not M.IsValid then continue;
+      inc(DataLen, M.DataLength);
+      Markers[MarkerCount] := M;
+      inc(MarkerCount);
+    end;
+  if DataLen <= 0 then exit;
+
+  // Sort markers by index
+  for i := 0 to MarkerCount - 2 do
+    for j := i + 1 to MarkerCount - 1 do
+      if Markers[i].CurrentMarker > Markers[j].CurrentMarker then
+      begin
+        M := Markers[i];
+        Markers[i] := Markers[j];
+        Markers[j] := M;
+      end;
+
+  // Extract marker data into our data
+  SetLength(FData, DataLen);
+  P := @FData[0];
+  for i := 0 to MarkerCount - 1 do
+  begin
+    Move(Markers[i].Data^, P^, Markers[i].DataLength);
+    inc(P, Markers[i].DataLength);
+  end;
+end;
+
+procedure TsdJpegICCProfile.SaveToFile(const AFileName: string);
+var
+  F: TFileStream;
+begin
+  F := TFileStream.Create(AFileName, fmCreate);
+  try
+    SaveToStream(F);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TsdJpegICCProfile.SaveToStream(S: TStream);
+begin
+  if length(FData) > 0 then
+    S.Write(FData[0], length(FData))
+end;
+
+procedure TsdJpegICCProfile.WriteToMarkerList(AList: TsdJpegMarkerList);
+const
+  cChunkSize = 60000;
+var
+  i, Count, Chunk, Left, Base: integer;
+  Markers: array of TsdICCProfileMarker;
+  P: Pbyte;
+begin
+  // Create an array of markers with the profile data
+  Count := (DataLength + cChunkSize - 1) div cChunkSize;
+  Left := DataLength;
+  P := Data;
+  SetLength(Markers, Count);
+  for i := 0 to Count - 1 do
+  begin
+    Markers[i] := TsdICCProfileMarker.Create(nil, mkApp2);
+    Chunk := IntMin(Left, cChunkSize);
+    Markers[i].DataLength := Chunk;
+    Move(P^, Markers[i].Data^, Chunk);
+    Markers[i].CurrentMarker := i + 1;
+    Markers[i].MarkerCount := Count;
+    inc(P, Chunk);
+    dec(Left, Chunk);
+  end;
+  // Insert them into the markerlist
+  Base := IntMin(AList.Count, 2);
+  for i := Count - 1 downto 0 do
+    AList.Insert(Base, Markers[i]);
+end;
 
 { TsdJpegImage }
 
@@ -599,7 +737,7 @@ var
   B, ReadBytes, Tag: byte;
   First, Last, P: PByte;
 begin
-  if (S is TMemoryStream) or (S is TsdFastMemStream) then
+  if S is TMemoryStream then
   begin
     // Fast skip based on memorystream
     First := TMemoryStream(S).Memory;
@@ -609,7 +747,7 @@ begin
     inc(P, S.Position);
     while cardinal(P) < cardinal(Last) do
     begin
-      // Scan stream for $FF + <marker>
+      // Scan stream for $FF<marker>
       if P^ = $FF then
       begin
         inc(P);
@@ -665,7 +803,7 @@ var
 begin
   W := FJpegInfo.FWidth;
   H := FJpegInfo.FHeight;
-  Divisor := sdGetDivisor(AScale);
+  Divisor := GetDivisor(AScale);
   AWidth  := (W + Divisor - 1) div Divisor;
   AHeight := (H + Divisor - 1) div Divisor;
 end;
@@ -676,7 +814,7 @@ var
 begin
   W := FJpegInfo.FTileWidth;
   H := FJpegInfo.FTileHeight;
-  Divisor := sdGetDivisor(AScale);
+  Divisor := GetDivisor(AScale);
   AWidth  := (W + Divisor - 1) div Divisor;
   AHeight := (H + Divisor - 1) div Divisor;
 end;
@@ -759,7 +897,7 @@ var
   Warning: boolean;
   InternalCS, OutputCS: TsdJpegColorSpace;
   // helper
-  procedure SetClassAndFormat(C: TsdColorTransformClass; F: TsdPixelFormat);
+  procedure ClassAndFormat(C: TsdColorTransformClass; F: TsdPixelFormat);
   begin
     AClass := C;
     AFormat := F;
@@ -767,13 +905,13 @@ var
 begin
   // default class and pixelformat
   case FJpegInfo.FFrameCount of
-  1: SetClassAndFormat(TsdNullTransform8bit, spf8bit);
-  2: SetClassAndFormat(TsdNullTransform16bit, spf16bit);
-  3: SetClassAndFormat(TsdNullTransform24bit, spf24bit);
-  4: SetClassAndFormat(TsdNullTransform32bit, spf32bit);
+  1: ClassAndFormat(TsdNullTransform8bit, spf8bit);
+  2: ClassAndFormat(TsdNullTransform16bit, spf16bit);
+  3: ClassAndFormat(TsdNullTransform24bit, spf24bit);
+  4: ClassAndFormat(TsdNullTransform32bit, spf32bit);
   else
     DoDebugOut(Self, wsWarn, 'FCodingInfo.FrameCount = 0');
-    SetClassAndFormat(nil, spf24bit);
+    ClassAndFormat(nil, spf24bit);
   end;
 
   // Determine stored colorspace
@@ -812,69 +950,69 @@ begin
   case InternalCS of
   jcGray:
     case OutputCS of
-    jcRGB: SetClassAndFormat(TsdTransformGrayToBGR, spf24bit);
+    jcRGB: ClassAndFormat(TsdTransformGrayToBGR, spf24bit);
     jcGray:;
     else
       Warning := True;
     end;
   jcGrayA:
     case OutputCS of
-    jcRGB:  SetClassAndFormat(TsdTransformGrayAToBGR, spf24bit);
-    jcRGBA: SetClassAndFormat(TsdTransformGrayAToBGRA, spf32bit);
+    jcRGB:  ClassAndFormat(TsdTransformGrayAToBGR, spf24bit);
+    jcRGBA: ClassAndFormat(TsdTransformGrayAToBGRA, spf32bit);
     jcGrayA:;
     else
       Warning := True;
     end;
   jcRGB:
     case OutputCS of
-    jcRGBA: SetClassAndFormat(TsdTransformRGBToBGRA, spf32bit);
-    jcRGB: SetClassAndFormat(TsdTransformInvertTriplet24bit, spf24bit);
+    jcRGBA: ClassAndFormat(TsdTransformRGBToBGRA, spf32bit);
+    jcRGB: ClassAndFormat(TsdTransformInvertTriplet24bit, spf24bit);
     else
       Warning := True;
     end;
   jcRGBA:
     case OutputCS of
-    jcRGb: SetClassAndFormat(TsdTransformRGBAToBGR, spf24bit);
+    jcRGb: ClassAndFormat(TsdTransformRGBAToBGR, spf24bit);
     jcRGBA:;
     else
       Warning := True;
     end;
   jcYCbCr, jcPhotoYCc:
     case OutputCS of
-    jcGray: SetClassAndFormat(TsdTransformYCbCrToGray, spf8bit);
-    jcRGB:  SetClassAndFormat(TsdTransformYCbCrToBGR, spf24bit);
-    jcRGBA: SetClassAndFormat(TsdTransformYCbCrToBGRA, spf32bit);
+    jcGray: ClassAndFormat(TsdTransformYCbCrToGray, spf8bit);
+    jcRGB:  ClassAndFormat(TsdTransformYCbCrToBGR, spf24bit);
+    jcRGBA: ClassAndFormat(TsdTransformYCbCrToBGRA, spf32bit);
     else
       Warning := True;
     end;
   jcYCbCrA, jcPhotoYCcA:
     case OutputCS of
-    jcRGB:  SetClassAndFormat(TsdTransformYCbCrAToBGR, spf24bit);
-    jcRGBA: SetClassAndFormat(TsdTransformYCbCrAToBGRA, spf32bit);
+    jcRGB: ClassAndFormat(TsdTransformYCbCrAToBGR, spf24bit);
+    jcRGBA: ClassAndFormat(TsdTransformYCbCrAToBGRA, spf32bit);
     else
       Warning := True;
     end;
   jcYCbCrK:
     case OutputCS of
-    jcRGB: SetClassAndFormat(TsdTransformYCbCrKToBGR, spf24bit);
+    jcRGB: ClassAndFormat(TsdTransformYCbCrKToBGR, spf24bit);
     else
       Warning := True;
     end;
   jcCMYK:
     case OutputCS of
-    jcRGB: SetClassAndFormat(TsdTransformCMYKToBGR_Adobe, spf24bit);
+    jcRGB: ClassAndFormat(TsdTransformCMYKToBGR_Adobe, spf24bit);
     else
       Warning := True;
     end;
   jcYCCK:
     case OutputCS of
-    jcRGB: SetClassAndFormat(TsdTransformYCCKToBGR, spf24bit);
+    jcRGB: ClassAndFormat(TsdTransformYCCKToBGR, spf24bit);
     else
       Warning := True;
     end;
   jcITUCieLAB:
     case OutputCS of
-    jcRGB: SetClassAndFormat(TsdTransformITUCIELabToBGR, spf24bit);
+    jcRGB: ClassAndFormat(TsdTransformITUCIELabToBGR, spf24bit);
     else
       Warning := True;
     end;
@@ -897,6 +1035,18 @@ begin
     Result := M.Comment;
 end;
 
+class function TsdJpegImage.GetDivisor(AScale: TsdJpegScale): integer;
+begin
+  case AScale of
+  jsFull: Result := 1;
+  jsDiv2: Result := 2;
+  jsDiv4: Result := 4;
+  jsDiv8: Result := 8;
+  else
+    Result := 1;
+  end;
+end;
+
 function TsdJpegImage.GetExifInfo: TsdEXIFMarker;
 begin
   Result := TsdEXIFMarker(FMarkers.ByTag(mkApp1));
@@ -906,7 +1056,7 @@ function TsdJpegImage.GetHeight: integer;
 var
   D: integer;
 begin
-  D := sdGetDivisor(FLoadScale);
+  D := GetDivisor(FLoadScale);
   Result := (GetImageHeight + D - 1) div D;
 end;
 
@@ -920,7 +1070,6 @@ begin
     Result := FICCProfile;
     exit;
   end;
-
   // Do we have an ICC profile?
   Result := nil;
   M := TsdICCProfileMarker(FMarkers.ByClass(TsdICCProfileMarker));
@@ -963,8 +1112,7 @@ begin
   if not assigned(FLossless) then
   begin
     FLossless := TsdLosslessOperation.Create(Self);
-    FLossless.OnBeforeLossless := BeforeLosslessUpdate;
-    FLossless.OnAfterLossless := AfterLosslessUpdate;
+    FLossless.OnUpdate := LosslessUpdate;
   end;
   Result := FLossless;
 end;
@@ -973,7 +1121,7 @@ function TsdJpegImage.GetWidth: integer;
 var
   D: integer;
 begin
-  D := sdGetDivisor(FLoadScale);
+  D := GetDivisor(FLoadScale);
   Result := (GetImageWidth + D - 1) div D;
 end;
 
@@ -1057,15 +1205,17 @@ begin
     FMarkers.Insert(1, AList.Extract(AList[AList.Count - 1]));
 end;
 
-procedure TsdJpegImage.LoadJpeg(AScale: TsdJpegScale; DoCreateBitmap: boolean);
+procedure TsdJpegImage.LoadJpeg(AScale: TsdJpegScale);
 var
   i: integer;
-  Iteration: cardinal;
-  MarkerTag, ExtraTag: byte;
+  MarkerTag: byte;
+  Transform: TsdColorTransform;
+  TransformClass: TsdColorTransformClass;
+  Res: TObject;
 begin
-  FLoadScale := AScale;
+  Res := nil;
 
-  DoDebugOut(Self, wsInfo, Format('LoadJpeg with LoadScale=%d', [integer(FLoadScale)]));
+  FLoadScale := AScale;
 
   // iterate thru the markers to initialize, decode and finalize the coder
   for i := 0 to FMarkers.Count - 1 do
@@ -1079,38 +1229,7 @@ begin
       end;
     mkSOS:
       if assigned(FCoder) then
-      begin
-        DoDebugOut(Self, wsinfo, Format('decode with FCoderStream size=%d',
-         [FCoderStream.Size]));
-
-        Iteration := 0;
-        FCoder.Decode(FCoderStream, Iteration);
-
-        // in progressive jpegs there can be additional SOS markers
-        while FCoderStream.Position < FCoderStream.Size do
-        begin
-          // optional additional SOS tag?
-          ExtraTag := LoadMarker(FCoderStream);
-          case ExtraTag of
-          mkSOS:
-            begin
-              inc(Iteration);
-              FCoder.Decode(FCoderStream, Iteration);
-            end;
-          mkDHT:
-            begin
-              // not the right place but we will be lenient
-              DoDebugOut(Self, wsWarn, 'incorrect place for DHT marker (must be *before* first SOS)');
-            end;
-          else
-            DoDebugOut(Self, wsinfo, Format('FCoderStream pos=%d size=%d',
-              [FCoderStream.Position, FCoderStream.Size]));
-            // signal that we are done
-            FCoderStream.Position := FCoderStream.Size;
-          end;
-        end;
-
-      end;
+        FCoder.Decode(FCoderStream);
     mkEOI:
       begin
         FCoder.Finalize;
@@ -1118,16 +1237,6 @@ begin
     end;
   end;
 
-  // if DoCreateBitmap, we update the bitmap
-  if DoCreateBitmap then
-    {Res := }UpdateBitmap;
-end;
-
-function TsdJpegImage.UpdateBitmap: TObject;
-var
-  Transform: TsdColorTransform;
-  TransformClass: TsdColorTransformClass;
-begin
   // If we do not have coefficients we have not loaded anything yet, so exit
   if not HasCoefficients then
     exit;
@@ -1156,11 +1265,9 @@ begin
 
       // this should also update the FMapIterator from the application
       if assigned(FOnCreateMap) then
-      begin
         // Res is usually a TBitmap  or TBitmap32 (Windows/Linux, etc), but it is
         // up to the application
-        Result := FOnCreateMap(FMapIterator);
-      end;
+        Res := FOnCreateMap(FMapIterator);
 
       // Ask the coder to put the samples in the bitmap
       FCoder.SamplesToImage(FMapIterator, Transform);
@@ -1173,7 +1280,7 @@ begin
     // Defer color management to the application, if OnExternalCMS is implemented
     if assigned(FOnExternalCMS) then
     begin
-      FOnExternalCMS(Self, Result);
+      FOnExternalCMS(Self, Res);
     end;
 
   end;
@@ -1210,7 +1317,7 @@ begin
   // first clear our data
   Clear;
 
-  // Update dependent data via OnUpdate
+  // Update dependent data via OnUpdate 
   if assigned(FOnUpdate) then
     FOnUpdate(Self);
 
@@ -1218,9 +1325,9 @@ begin
   FDataSize := S.Size;
 
   try
-    // load another marker of the markers in the jpeg
     repeat
 
+      // load another marker of the markers in the jpeg
       MarkerTag := LoadMarker(S);
 
     until (MarkerTag = mkSOS) or (MarkerTag = mkNone);
@@ -1300,7 +1407,7 @@ begin
         end;
       mkSOS:
         if FCoder is TsdJpegBaselineCoder then
-          TsdJpegBaselineCoder(FCoder).Decode(FCoderStream, 0);
+          TsdJpegBaselineCoder(FCoder).Decode(FCoderStream);
       end;
     end;
   end;
@@ -1313,7 +1420,7 @@ begin
   end;
 
   // Determine MCU block area
-  Divisor := sdGetDivisor(FLoadScale);
+  Divisor := GetDivisor(FLoadScale);
   McuW := FJpegInfo.FMCUWidth div Divisor;
   McuH := FJpegInfo.FMCUHeight div Divisor;
 
@@ -1376,25 +1483,16 @@ begin
 
 end;
 
-procedure TsdJpegImage.BeforeLosslessUpdate(Sender: TObject);
+procedure TsdJpegImage.LosslessUpdate(Sender: TObject);
 begin
-  // the loadfromfile does not decode the jpeg, so use LoadJpeg
-  // with option DoCreateMap = False, if not yet done
-  if not HasCoefficients then
-    LoadJpeg(jsFull, False);
-end;
-
-procedure TsdJpegImage.AfterLosslessUpdate(Sender: TObject);
-begin
-  // after a lossless operation, SaveJpeg must be called
-  // so that the huffman tables are recreated.
-  SaveJpeg;
-  Reload;
-  LoadJpeg(jsFull, False);
-
   // call OnUpdate for the application
   if assigned(FOnUpdate) then
     FOnUpdate(Sender);
+
+  // after a lossless operation, SaveJpeg must be called
+  // so that the huffman tables are recreated.
+  SaveJpeg{(FMapiterator)};
+  Reload;
 end;
 
 function TsdJpegImage.LoadMarker(S: TStream): byte;
@@ -1428,7 +1526,6 @@ begin
       DoDebugOut(Self, wsWarn, Format('Error: duplicate $FF encountered at %.6d', [S.Position - 1]));
       S.Read(MarkerTag, 1);
     end;
-
     case MarkerTag of
     mkAPP0..mkAPP15:
       begin
@@ -1476,12 +1573,11 @@ begin
       Size := 0;
 
     StreamPos := S.Position;
-
     // Load the marker payload
     Marker.LoadFromStream(S, Size);
 
-    // The SOS marker indicates start of entropy coding (start of scan),
-    // EOI indicates end of image. SOF0 and SOF2 indicate
+    // The SOS marker indicates start of
+    // entropy coding, EOI indicates end of image. SOF0 and SOF2 indicate
     // baseline and progressive starts, we do not use Marker.LoadFromStream for these.
     if not (MarkerTag in [mkSOF0..mkSOF2, mkSOS, mkRST0..mkRST7, mkEOI]) then
     begin
@@ -1559,15 +1655,15 @@ begin
       // Now create the optimized huffman tables for this scan, by doing a dry
       // run, indicated by nil
       DoDebugOut(Self, wsInfo, 'doing dry-run encoding for Huffman table');
-      FCoder.Encode(nil, 0);
+      FCoder.Encode(nil);
 
       // Ask the coder to create the DHT marker for us, as a
       // result of the dry-run information
-      DHT := FCoder.CreateDHTMarker;
+      DHT := TsdDHTMarker(FCoder.CreateDHTMarker);
       DoDebugOut(Self, wsInfo, 'writing DHT marker');
+      DHT.WriteMarker;
       if assigned(DHT) then
       begin
-        DHT.WriteMarker;
         // If a marker was created, then insert it and continue, so it will be saved
         DoDebugOut(Self, wsInfo, 'inserting new DHT marker');
         FMarkers.Insert(i - 1, DHT);
@@ -1588,7 +1684,7 @@ begin
     if M is TsdSOSMarker then
     begin
       FCoderStream.Size := 0;
-      FCoder.Encode(FCoderStream, 0);
+      FCoder.Encode(FCoderStream);
       // bring position back to 0 for future load/saves
       FCoderStream.Position := 0;
     end;
