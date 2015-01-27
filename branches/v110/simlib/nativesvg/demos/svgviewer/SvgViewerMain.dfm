@@ -29,7 +29,7 @@ object frmMain: TfrmMain
     Top = 0
     Width = 494
     Height = 271
-    ActivePage = tsImage
+    ActivePage = tsDebug
     Align = alClient
     TabOrder = 1
     object tsImage: TTabSheet

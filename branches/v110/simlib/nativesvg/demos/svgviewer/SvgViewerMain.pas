@@ -7,27 +7,16 @@ unit SvgViewerMain;
   copyright (c) 2007-2011 by SimDesign BV (www.simdesign.nl)
 }
 
-// Define if you downloaded the Pyro Raster additions
-{$define RASTER}   
-
 interface
 
 uses
   SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  Menus, ComCtrls, StdCtrls, ExtCtrls, Math,
+  Menus, ComCtrls, StdCtrls, ExtCtrls, Math, Contnrs,
 
   // pyro
   Pyro, pgPlatform, pgScene, pgCustomView, pgColor, pgViewPort, pgShape, pgTransform, pgText, pgCommandPath,
-  pgCoreSceneViewer, pgContentProvider, pgControls, pgPyroCanvas, pgSceneViewer, pgRender, pgSvgImport,
+  pgCoreSceneViewer, pgContentProvider, pgControls, pgPyroCanvas, pgSceneViewer, pgRender, pgSvgImport, pgRasterJpg, sdDebug;
 
-  {$ifdef RASTER}
-  pgRasterJpg,
-  //pgRasterGif,
-  //pgRasterPng,
-  {$endif}
-
-  // simdesign
-  sdDebug;
 
 type
   TfrmMain = class(TForm)
@@ -123,7 +112,7 @@ begin
   FPanel := TpgCustomView.Create(Self);
   FPanel.Parent := tsImage;
   FPanel.Align := alClient;
-  FPanel.OnMouseDown := PanelMouseDown;
+  //FPanel.OnMouseDown := PanelMouseDown;  todo
 
   // Use our Pyro canvas
   FPanel.CanvasType := ctPyro;
