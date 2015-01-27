@@ -26,7 +26,7 @@ unit Pyro;
 interface
 
 uses
-  NativeXml, SysUtils;
+  RelaxXml, SysUtils, sdDebug;
 
 const
 

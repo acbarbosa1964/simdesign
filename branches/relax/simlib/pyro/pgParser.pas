@@ -23,7 +23,7 @@ unit pgParser;
 interface
 
 uses
-  SysUtils, NativeXml, Pyro;
+  SysUtils, RelaxXml, sdDebug, Pyro;
 
 type
 
