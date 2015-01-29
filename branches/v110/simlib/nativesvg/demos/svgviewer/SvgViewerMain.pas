@@ -15,7 +15,9 @@ uses
 
   // pyro
   Pyro, pgPlatform, pgScene, pgCustomView, pgColor, pgViewPort, pgShape, pgTransform, pgText, pgCommandPath,
-  pgCoreSceneViewer, pgContentProvider, pgControls, pgPyroCanvas, pgSceneViewer, pgRender, pgSvgImport, pgRasterJpg, sdDebug;
+  pgCoreSceneViewer, pgContentProvider, pgControls, pgPyroCanvas, pgSceneViewer, pgRender, pgSvgImport, pgRasterJpg, sdDebug,
+
+  NativeXml;
 
 
 type
