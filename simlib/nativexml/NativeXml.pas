@@ -38,32 +38,21 @@ interface
 {$i simdesign.inc}
 
 // uncomment if you do not want to include the Graphics unit.
-{.$define USEGRAPHICS}
-
-// Uncomment to save memory space for large xml documents if you don't need tags.
-// Tags are an additional integer field that can be used by the application.
-{$define USETAGS}
-
-// uncomment to avoid a little bit of overhead when debugging and reporting source position
-{$define SOURCEPOS}
 
 uses
-{$ifdef USEGRAPHICS}
   Graphics,
-{$endif USEGRAPHICS}
-  Classes, Contnrs, SysUtils,
-{$ifdef MSWINDOWS}
-  {$define USEWINDOWS}
-{$endif MSWINDOWS}
-{$ifdef USEWINDOWS}
+  Classes,
+  Contnrs,
+  SysUtils,
+
+{$IFDEF MSWINDOWS}
   // unit Windows defines MultiByteToWideChar and GetTimeZoneInformation
   Windows,
-{$else USEWINDOWS}
-  // linux: win32-compatible functions
-  NativeXmlWin32Compat,
-{$endif USEWINDOWS}
+{$ENDIF}
   // units from simlib.general
-  sdStreams, sdStringTable, sdDebug;
+  sdStreams,
+  sdStringTable,
+  sdDebug;
 
 const
 
@@ -377,12 +366,8 @@ type
     function GetChildContainers(Index: integer): TXmlNode; virtual;
     function GetDocument: TNativeXml;
   protected
-    {$ifdef USETAGS}
     FTag: integer;
-    {$endif USETAGS}
-    {$ifdef SOURCEPOS}
     FSourcePos: int64;
-    {$endif SOURCEPOS}
     // string table lookup methods
     function GetString(AID: integer): Utf8String;
     function AddString(const S: Utf8String): integer;
@@ -432,17 +417,13 @@ type
     function WriteToString: Utf8String;
     // Pointer to the owner document NativeXml
     property Document: TNativeXml read GetDocument;
-    {$ifdef USETAGS}
     // Tag is an integer value the developer can use in any way. Tag does not get
     // saved to the XML. Tag is often used to point to a GUI element (and is then
     // cast to a pointer).
     property Tag: integer read FTag write FTag;
-    {$endif USETAGS}
-    {$ifdef SOURCEPOS}
     // SourcePos (int64) points to the position in the source file where the
     // nodes text begins.
     property SourcePos: int64 read FSourcePos write FSourcePos;
-    {$endif SOURCEPOS}
     // Parent points to the parent node of the current XML node.
     property Parent: TXmlNode read FParent;
     // This function returns True if the node has no subnodes and no attributes,
@@ -675,7 +656,6 @@ type
     function ReadAttributeDateTime(const AName: Utf8String; ADefault: TDateTime = 0): TDateTime; virtual;     // added by hdk
 
     function ReadBool(const AName: Utf8String; ADefault: boolean = False): boolean; virtual;
-    {$ifdef USEGRAPHICS}
     // Read the properties Color, Mode, Style and Width for the TPen object APen
     // from the subnode with AName.
     procedure ReadPen(const AName: Utf8String; APen: TPen); virtual;
@@ -685,7 +665,6 @@ type
     // Read the subnode with AName and convert its value to TColor. If the
     // subnode is not found, or cannot be converted, ADefault will be returned.
     function ReadColor(const AName: Utf8String; ADefault: TColor = clBlack): TColor; virtual;
-    {$endif USEGRAPHICS}
     // Read the subnode with AName and convert its value to TDateTime. If the
     // subnode is not found, or cannot be converted, ADefault will be returned.
     function ReadDateTime(const AName: Utf8String; ADefault: TDateTime = 0): TDateTime; virtual;
@@ -737,7 +716,6 @@ type
     // Add or replace the subnode with AName and set its value to represent the boolean
     // AValue. If AValue = ADefault, and WriteOnDefault = False, no subnode will be added.
     procedure WriteBool(const AName: Utf8String; AValue: boolean; ADefault: boolean = False); virtual;
-    {$ifdef USEGRAPHICS}
     // Write properties Color, Mode, Style and Width of the TPen object APen to
     // the subnode with AName. If AName does not exist, it will be created.
     procedure WritePen(const AName: Utf8String; APen: TPen); virtual;
@@ -747,7 +725,6 @@ type
     // Add or replace the subnode with AName and set its value to represent the TColor
     // AValue. If AValue = ADefault, and WriteOnDefault = False, no subnode will be added.
     procedure WriteColor(const AName: Utf8String; AValue: TColor; ADefault: TColor = clBlack); virtual;
-    {$endif USEGRAPHICS}
     // Add or replace the subnode with AName and set its value to represent the TDateTime
     // AValue. If AValue = ADefault, and WriteOnDefault = False, no subnode will be added.
     // The XML format used is compliant with W3C's specification of date and time.
@@ -2345,7 +2322,6 @@ begin
     Result := Child.GetValueAsBoolDef(ADefault);
 end;
 
-{$ifdef USEGRAPHICS}
 procedure TXmlNode.ReadPen(const AName: UTF8String; APen: TPen);
 var
   Child: TXmlNode;
@@ -2391,7 +2367,6 @@ function TXmlNode.ReadColor(const AName: Utf8String; ADefault: TColor = 0): TCol
 begin
   Result := ReadInteger(AName, integer(ADefault));
 end;
-{$endif USEGRAPHICS}
 
 function TXmlNode.ReadDateTime(const AName: Utf8String; ADefault: TDateTime): TDateTime;
 var
@@ -2859,7 +2834,6 @@ begin
   end;
 end;
 
-{$ifdef USEGRAPHICS}
 procedure TXmlNode.WritePen(const AName: Utf8String; APen: TPen);
 begin
   with NodeFindOrCreate(AName) do
@@ -2885,7 +2859,6 @@ begin
   if WriteOnDefault or (AValue <> ADefault) then
     WriteHex(AName, ColorToRGB(AValue), 8, 0);
 end;
-{$endif USEGRAPHICS}
 
 function TXmlNode.GetBinaryString: RawByteString;
 begin
@@ -3369,9 +3342,7 @@ var
   IsTrimmed: boolean;
 begin
   Result := Self;
-  {$ifdef SOURCEPOS}
   FSourcePos := P.Position;
-  {$endif SOURCEPOS}
   // Get the attribute name
   FNameID := AddString(sdTrim(P.ReadStringUntilChar('='), IsTrimmed));
   if assigned(FCoreValue) then
@@ -3913,14 +3884,10 @@ procedure TsdElement.ParseIntermediateData(P: TsdXmlParser);
 var
   CharDataString: Utf8String;
   CharDataNode: TsdCharData;
-  {$ifdef SOURCEPOS}
   SourcePos: int64;
-  {$endif SOURCEPOS}
   IsTrimmed: boolean;
 begin
-  {$ifdef SOURCEPOS}
   SourcePos := P.Position;
-  {$endif SOURCEPOS}
 
   CharDataString := P.ReadStringUntilChar('<');
   if not GetPreserveWhiteSpace then
@@ -3930,9 +3897,7 @@ begin
   begin
     // Insert CharData node
     CharDataNode := TsdCharData.Create(TNativeXml(FOwner));
-    {$ifdef SOURCEPOS}
     CharDataNode.FSourcePos := SourcePos;
-    {$endif SOURCEPOS}
     CharDataNode.FCoreValueID := AddString(CharDataString);
     NodeAdd(CharDataNode);
 
@@ -3961,9 +3926,7 @@ begin
   // the index of the chardata subnode that will hold the value, initially -1
   FValueIndex := -1;
 
-  {$ifdef SOURCEPOS}
   FSourcePos := P.Position;
-  {$endif SOURCEPOS}
 
   // Parse name
   AName := sdTrim(P.ReadStringUntilBlankOrEndTag, IsTrimmed);
@@ -4815,9 +4778,7 @@ var
   Node: TXmlNode;
   StringData: Utf8String;
   CD: TsdCharData;
-  {$ifdef SOURCEPOS}
   SP: int64;
-  {$endif SOURCEPOS}
   IsTrimmed: boolean;
   DeclarationEncodingString: Utf8String;
 begin
@@ -4831,9 +4792,7 @@ begin
 
   // Read next tag
   repeat
-    {$ifdef SOURCEPOS}
     SP := Parser.Position;
-    {$endif SOURCEPOS}
     StringData := Parser.ReadStringUntilChar('<');
     if not FPreserveWhiteSpace then
       StringData := sdTrim(StringData, IsTrimmed);
@@ -4842,9 +4801,7 @@ begin
     begin
       // Add chardata node
       CD := TsdCharData.Create(Self);
-      {$ifdef SOURCEPOS}
       CD.SourcePos := SP;
-      {$endif SOURCEPOS}
       CD.Value := StringData;
       FRootNodes.Add(CD);
       DoNodeNew(CD);
@@ -6476,7 +6433,6 @@ const
 
 { Utility Functions }
 
-{$ifdef MSWINDOWS}
 function sdWideToUtf8(const W: UnicodeString): Utf8String;
 var
   WideCount, Utf8Count: integer;
@@ -6502,18 +6458,6 @@ begin
   WideCount := sdUtf8ToWideBuffer(U[1], Result[1], Utf8Count);
   SetLength(Result, WideCount);
 end;
-{$else}
-// FPC functions
-function sdWideToUtf8(const W: UnicodeString): Utf8String;
-begin
-  Result := W;
-end;
-
-function sdUtf8ToWide(const U: Utf8String): UnicodeString;
-begin
-  Result := U;
-end;
-{$endif}
 
 function sdWideToUtf8Buffer(const WideBuf; var Utf8Buf; WideCount: integer): integer;
 // Convert an Unicode (UTF16 LE) memory block to UTF8. This routine will process
@@ -7058,7 +7002,6 @@ begin
 end;
 
 function GetTimeZoneBias: Integer;
-{$ifdef USEWINDOWS}
 // uses windows unit, func GetTimeZoneInformation
 // contributor: Stefan Glienke
 var
@@ -7072,12 +7015,6 @@ begin
     Result := 0;
   end;
 end;
-{$else USEWINDOWS}
-begin
-  // NH: I dont know the linux equivalent..
-  Result := 0;
-end;
-{$endif USEWINDOWS}
 
 { XYZ to string functions }
 
