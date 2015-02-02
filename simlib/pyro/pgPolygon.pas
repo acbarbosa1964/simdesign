@@ -49,15 +49,6 @@ type
     property Points[Index: integer]: PpgPoint read GetPoints;
   end;
 
-{  TpgBorrowPolygon = class(TpgPolygon) no longer used?
-  private
-    FFirst: PpgPoint;
-  protected
-    function GetFirst: PpgPoint; override;
-  public
-    constructor Create(AFirst: PpgPoint; ACount: integer);
-  end;}
-
   TpgAbstractPolyPolygon = class;
 
   // Generic polygon list item
@@ -175,31 +166,9 @@ type
     property BreakupLength: single read FBreakupLength write SetBreakupLength;
   end;
 
-  // Polypolygon of fixed points (todo)
-  TpgPolyPolygonF = class(TpgPolyPolygon)
-  private
-    function GetPoints: TpgArrayOfArrayOfPointF;
-  public
-    procedure NewLine;
-    procedure Add(const APoint: TpgPointF);
-    property Points: TpgArrayOfArrayOfPointF read GetPoints;
-  end;
+{ functions }
 
-resourcestring
-
-  sNoCurrentPathDefined = 'No current path defined';
-
-// Consider a closed polygon, constructed of Count points, does it contain point P? If Result = 0,
-// the point is outside. Results of multiple polygons can be added up to form a winding
-// number to use in combination with the fillrule.
-function pgPointInPolygon(AFirst: PpgPoint; ACount: integer; const P: TpgPoint): integer;
-
-// Check whether point P is on the polygon, with Tolerance on both sides.
-function  pgPointOnPolygon(First: PpgPoint; Count: integer; IsClosed: boolean; const P: TpgPoint; Tolerance: single): boolean;
-
-// Create a list of normal vectors in Dest. Dest[0] contains the normal of the
-// line from Source[0] to Source[1], and so on.
-procedure pgBuildNormals(Source, Dest: PpgPoint; Count: integer);
+procedure PathItemBuildNormals(AItem: TpgPolygonItem; var Normals: array of TpgPoint);
 
 implementation
 
@@ -721,7 +690,7 @@ end;
 
 { TpgPolyPolygonF }
 
-procedure TpgPolyPolygonF.Add(const APoint: TpgPointF);
+{procedure TpgPolyPolygonF.Add(const APoint: TpgPointF);
 begin
 //todo
 end;
@@ -734,182 +703,25 @@ end;
 procedure TpgPolyPolygonF.NewLine;
 begin
 //todo
-end;
+end;}
 
 { functions }
 
-function pgPointInPolygon(AFirst: PpgPoint; ACount: integer; const P: TpgPoint): integer;
-var
-  i: integer;
-  P2: PpgPoint;
-  X1, Y1, X2, Y2: single;
-
-  // local
-  function CaseSign(AValue: single): integer;
-  begin
-    if AValue < 0 then
-      Result := 0
-    else
-      if AValue > 0 then
-        Result := 2
-      else
-        Result := 1;
-  end;
-
-  // local
-  function CheckX: integer;
-  var
-    X: single;
-  begin
-    Result := 0;
-    if (X1 > 0) and (X2 > 0) then
-      exit;
-    if not ((X1 <= 0) and (X2 <= 0)) then
-    begin
-      // Calculate X
-      X := X1 - Y1 * (X2 - X1) / (Y2 - Y1);
-      if X > 0 then
-        exit;
-    end;
-    Result := 1;
-  end;
-
-// main
-begin
-  Result := 0;
-  if ACount <= 2 then
-    exit;
-
-  P2 := AFirst;
-  inc(AFirst, ACount - 1); // go to last
-  X1 := AFirst.X - P.X;
-  Y1 := AFirst.Y - P.Y;
-  for i := 0 to ACount - 1 do
-  begin
-    X2 := P2.X - P.X;
-    Y2 := P2.Y - P.Y;
-    case CaseSign(Y1) + CaseSign(Y2) * 3 of
-    0:;// Y1 < 0, Y2 < 0
-    1:// Y1 = 0, Y2 < 0
-      inc(Result, CheckX);
-    2:// Y1 > 0, Y2 < 0
-      inc(Result, CheckX);
-    3:// Y1 < 0, Y2 = 0
-      dec(Result, CheckX);
-    4:;// Y1 = 0, Y2 = 0
-    5:;// Y1 > 0, Y2 = 0
-    6:// Y1 < 0, Y2 > 0
-      dec(Result, CheckX);
-    7:;// Y1 = 0, Y2 > 0
-    8:;// Y1 > 0, Y2 > 0
-    end;
-
-    // Move to next point
-    X1 := X2;
-    Y1 := Y2;
-    inc(P2);
-  end;
-end;
-
-function pgPointOnPolygon(First: PpgPoint; Count: integer; IsClosed: boolean; const P: TpgPoint; Tolerance: single): boolean;
-var
-  i: integer;
-  Points: PpgPointArray;
-  Last: integer;
-  X1, Y1, X2, Y2: single;
-  X, Y, XMin, XMax, YMin, YMax: single;
-  Tol2: single;
-  P2: PpgPoint;
-
-  // local
-  function DistSqr(Ax, Ay, Bx, By: single): single;
-  begin
-    Result := sqr(Ax - Bx) + sqr(Ay - By);
-  end;
-
-  // local
-  function CheckLineSegment: boolean;
-  var
-    q: single;
-  begin
-    Result := False;
-    // BB checks
-    if (XMax < X1) and (XMax < X2) then exit;
-    if (XMin > X1) and (XMin > X2) then exit;
-    if (YMax < Y1) and (YMax < Y2) then exit;
-    if (YMin > Y1) and (YMin > Y2) then exit;
-
-    // Point-Line distance
-    if (X1 = X2) and (Y1 = Y2) then
-    begin
-
-      // Point to point
-      Result := DistSqr(X, Y, X1, Y1) <= Tol2;
-      exit;
-
-    end;
-
-    // Minimum
-    q := ((X - X1) * (X2 - X1) + (Y - Y1) * (Y2 - Y1)) / (sqr(X2 - X1) + sqr(Y2 - Y1));
-
-    // Limit q to 0 <= q <= 1
-    if q < 0 then q := 0;
-    if q > 1 then q := 1;
-
-    // Distance
-    Result := DistSqr(X, Y, (1 - q) * X1 + q * X2, (1 - q) * Y1 + q * Y2) <= Tol2;
-  end;
-
-// main
-begin
-  Result := False;
-  Points := PpgPointArray(First);
-  if IsClosed then
-    Last := Count
-  else
-    Last := Count - 1;
-
-  // Convenience
-  X := P.X; Y := P.Y;
-  XMin := X - Tolerance;
-  XMax := X + Tolerance;
-  YMin := Y - Tolerance;
-  YMax := Y + Tolerance;
-  Tol2 := sqr(Tolerance);
-
-  X1 := First.X;
-  Y1 := First.Y;
-  for i := 0 to Last - 1 do
-  begin
-    P2 := @Points[(i + 1) mod Count];
-    X2 := P2.X;
-    Y2 := P2.Y;
-    if CheckLineSegment then
-    begin
-      Result := True;
-      exit;
-    end;
-    X1 := X2;
-    Y1 := Y2;
-  end;
-end;
-
-procedure pgBuildNormals(Source, Dest: PpgPoint; Count: integer);
+procedure PathItemBuildNormals(AItem: TpgPolygonItem; var Normals: array of TpgPoint);
 var
   i: integer;
   PointA, PointB: PpgPoint;
   Dx, Dy: single;
   R, F: double;
 begin
-  if Count <= 0 then
+  if AItem.PointCount <= 0 then
     exit;
-
-  PointA := Source;
-  for i := 1 to Count do
+  PointA := AItem.FirstPoint;
+  for i := 0 to AItem.PointCount - 1 do
   begin
+
     // Get point B, auto-wrap around
-    PointB := Source;
-    inc(PointB, i mod Count);
+    PointB := AItem.Points[(i + 1) mod AItem.PointCount];
 
     // The normals are rotated +90 deg
     Dx := PointA.Y - PointB.Y;
@@ -920,15 +732,14 @@ begin
     if R > 0 then
     begin
       F := 1 / R;
-      Dest.X := Dx * F;
-      Dest.Y := Dy * F;
+      Normals[i].X := Dx * F;
+      Normals[i].Y := Dy * F;
     end else
     begin
-      Dest.X := 0;
-      Dest.Y := 0;
+      Normals[i].X := 0;
+      Normals[i].Y := 0;
     end;
     PointA := PointB;
-    inc(Dest);
   end;
 end;
 

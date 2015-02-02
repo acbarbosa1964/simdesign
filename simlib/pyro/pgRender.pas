@@ -17,9 +17,10 @@ unit pgRender;
 interface
 
 uses
-  SysUtils, Controls, Classes, Contnrs, pgShape, pgTransform, pgSyncList,
-  pgCanvas, pgText, pgCoreRender, pgPath, pgContentProvider, pgViewPort, pgImage,
-  pgColor, pgScene, pgDocument, pgBoundsPath, Pyro;
+  SysUtils, Controls, Classes, Contnrs,
+  // pyro
+  pgTransform, pgCanvas, pgRenderUsingCore, pgPath, pgContentProvider, pgColor,
+  pgDocument, pgScene, Pyro;
 
 type
 
@@ -33,15 +34,17 @@ type
   TpgRenderer = class;
 
   // Synced item that contains additional bounds info
-  TpgBoundsItem = class(TpgSyncItem)
+  TpgBoundsItem = class(TPersistent)//(TpgSyncItem)
   private
     FBoundsValid: boolean;  // the bounds are valid (calculated)
     FHasBounds: boolean;    // this element doesn't have bounds (e.g. group with no members)
     FTightBB: TpgBox;       // Tight bounding box (fits just around the shape's path)
     FLooseBB: TpgBox;       // Loose bounding box (encompasses stroke and effects too)
+    function GetItem: TpgItem;
   protected
-    procedure Invalidate; override;
+    procedure Invalidate; virtual;
     procedure InvalidateBounds; virtual;
+    property Item: TpgItem read GetItem;
   public
     procedure UpdateBounds(ACanvas: TpgCanvas; ARenderer: TpgRenderer);
     property BoundsValid: boolean read FBoundsValid;
@@ -57,14 +60,14 @@ type
   private
     FInfo: TpgSelectInfo;
   protected
-    function PreventDrop: boolean; override;
+    function PreventDrop: boolean; virtual;
   public
     destructor Destroy; override;
   end;
 
   TpgRenderer = class(TpgCoreRenderer)
   private
-    FSyncList: TpgSyncList; // owned sync list for bounding boxes
+    //FSyncList: TpgSyncList; // owned sync list for bounding boxes
   protected
     function HitTestGraphic(ACanvas: TpgCanvas; AGraphic: TpgGraphic; const Pparent: TpgPoint;
       var Pgraphic: TpgPoint; Scale: single): TpgGraphic;
@@ -91,12 +94,21 @@ type
     // Render a temp polyline during insert command
     procedure RenderInsertPoly(ACanvas: TpgCanvas; First: PpgPoint; Count: integer; ATransform: TpgTransform); virtual;
     // A list containing sync items with scene
-    property SyncList: TpgSyncList read FSyncList write FSyncList;
+    //property SyncList: TpgSyncList read FSyncList write FSyncList;
   end;
 
 implementation
 
+type
+  TShapeAccess = class(TpgShape);
+
 { TpgBoundsItem }
+
+function TpgBoundsItem.GetItem: TpgItem;
+begin
+//todo
+  Result := nil;
+end;
 
 procedure TpgBoundsItem.Invalidate;
 begin
@@ -105,7 +117,7 @@ end;
 
 procedure TpgBoundsItem.InvalidateBounds;
 var
-  P: TpgElement;
+  P: TpgItem;
   Item: TpgBoundsItem;
 begin
   if FBoundsValid then
@@ -113,10 +125,10 @@ begin
     FBoundsValid := False;
     // We must also invalidate the bounds of any parent that is not a viewport,
     // since its bounds may also no longer be valid (they enclose ours)
-    P := Element.Parent;
+    P := nil; //todo Element.Parent;
     if assigned(P) and not (P is TpgViewPort) then
     begin
-      Item := TpgBoundsItem(Owner.ById(P.Id));
+      Item := nil; //todo TpgBoundsItem(Owner.ById(P.Id));
       if assigned(Item) then
         Item.Invalidate;
     end;
@@ -125,11 +137,11 @@ end;
 
 procedure TpgBoundsItem.UpdateBounds(ACanvas: TpgCanvas; ARenderer: TpgRenderer);
 var
-  i: integer;
-  List: TpgSyncChildList;
-  Child: TpgBoundsItem;
+//  i: integer;
+  //List: TpgSyncChildList;
+//  Child: TpgBoundsItem;
   Graphic: TpgGraphic;
-  Transform: TpgTransform;
+//  Transform: TpgTransform;
   L, S: TpgBox;
   Empty: boolean;
 
@@ -153,11 +165,11 @@ begin
   if not FBoundsValid then
   begin
     FHasBounds := False;
-    Graphic := TpgGraphic(Element);
+    Graphic := TpgGraphic(Item);
     if not (Graphic is TpgViewPort) then
     begin
 
-      // Get child list
+      {todo // Get child list
       List := GetChildList;
       try
 
@@ -168,7 +180,7 @@ begin
           Child.UpdateBounds(ACanvas, ARenderer);
           if Child.FHasBounds then
           begin
-            Transform := TpgGraphic(Child.Element).Transform.Value;
+            Transform := TpgGraphic(Child.Element).Transform.TransformValue;
             L := TransformBox(Child.FLooseBB, Transform);
             S := TransformBox(Child.FTightBB, Transform);
             CombineBounds;
@@ -176,7 +188,7 @@ begin
         end;
       finally
         List.Free;
-      end;
+      end;}
 
     end;
 
@@ -210,22 +222,22 @@ constructor TpgRenderer.Create;
 begin
   inherited;
   // setup synclist
-  FSyncList := TpgSyncList.Create;
+{  FSyncList := TpgSyncList.Create;
   FSyncList.ItemClass := TpgSelectItem;
   FSyncList.FilterClass := TpgGraphic;
-  FSyncList.Options := [soBeforeChange, soDropChildren];
+  FSyncList.Options := [soBeforeChange, soDropChildren];}
 end;
 
 destructor TpgRenderer.Destroy;
 begin
-  FreeAndNil(FSyncList);
+//  FreeAndNil(FSyncList);
   inherited;
 end;
 
 function TpgRenderer.GetTransformListForGraphic(ACanvas: TpgCanvas;
   AGraphic: TpgGraphic; ATransform: TpgTransform; AScratch: TObjectList): TpgTransformList;
 var
-  E: TpgElement;
+  E: TpgItem;
   T: TpgTransform;
 begin
   Result := TpgTransformList.Create;
@@ -238,7 +250,7 @@ begin
       Result.Precat(T);
       AScratch.Add(T);
     end;
-    Result.Precat(TpgGraphic(E).Transform.Value);
+    Result.Precat(TpgGraphic(E).Transform.TransformValue);
     E := E.Parent;
   end;
   Result.Precat(ATransform);
@@ -276,16 +288,16 @@ function TpgRenderer.HitTestGraphic(ACanvas: TpgCanvas; AGraphic: TpgGraphic;
   const Pparent: TpgPoint; var Pgraphic: TpgPoint; Scale: single): TpgGraphic;
 var
   i: integer;
-  AElement: TpgElement;
+  AItem: TpgItem;
   Exists: boolean;
   T: TpgTransform;
   Pchild: TpgPoint;
-  Item: TpgSelectItem;
+//  Item: TpgSelectItem;
 begin
   Result := nil;
 
   // Add our transform
-  T := TpgGraphic(AGraphic).Transform.Value;
+  T := TpgGraphic(AGraphic).Transform.TransformValue;
   if assigned(T) then
   begin
     Exists := T.InverseTransform(Pparent, Pgraphic);
@@ -306,23 +318,23 @@ begin
       exit;
   end;
 
-  // Shortcut test: bounding box
+{todo  // Shortcut test: bounding box
   Item := TpgSelectItem(FsyncList.ById(AGraphic.Id));
   if not assigned(Item) then
     Item := TpgSelectItem(FSyncList.AddItem(AGraphic.Id));
   if not Item.FBoundsValid then
     Item.UpdateBounds(ACanvas, Self);
   if not pgPointInBox(Item.FLooseBB, Pgraphic) then
-    exit;
+    exit;}
 
   // First test children, from Count - 1 downto 0. This ensures to find the
   // latest items drawn first (which are the top items)
   for i := AGraphic.ElementCount - 1 downto 0 do
   begin
-    AElement := AGraphic.Elements[i];
-    if AElement is TpgGraphic then
+    AItem := AGraphic.Items[i];
+    if AItem is TpgGraphic then
     begin
-      Result := HitTestGraphic(ACanvas, TpgGraphic(AElement), Pgraphic, Pchild, Scale);
+      Result := HitTestGraphic(ACanvas, TpgGraphic(AItem), Pgraphic, Pchild, Scale);
       if assigned(Result) then
       begin
         // set the result to the coordinates of the child graphic
@@ -335,7 +347,7 @@ begin
   // still here? Do our own hittest
 
   // Does the graphic allow selection?
-  if eoDenySelect in AGraphic.EditorOptions.Value then
+  if eoDenySelect in AGraphic.EditorOptions.IntValue then
     exit;
 
   if AGraphic is TpgShape then
@@ -345,7 +357,7 @@ begin
   begin
 
     // Use tight bounding box
-    if pgPointInBox(Item.FTightBB, Pgraphic) then
+//todo    if pgPointInBox(Item.FTightBB, Pgraphic) then
       Result := AGraphic;
   end;
 end;
@@ -364,7 +376,7 @@ begin
   try
 
     P.PixelScale := Scale;
-    AShape.PlayFillPath(P, ACanvas.DeviceInfo^);
+    TShapeAccess(AShape).PlayFillPath(P, ACanvas.DeviceInfo^);
     W := AShape.StrokeWidth.ToDevice(ACanvas.DeviceInfo^) * 0.5;
     B := pgGrowBox(P.BoundingBox, W);
 
@@ -373,7 +385,7 @@ begin
       exit;
 
     // Inside the fillpath?
-    if (AShape.Fill.PaintStyle <> psNone) and P.PointInPath(Pp.X, Pp.Y, AShape.FillRule.Value) then
+    if (AShape.Fill.PaintStyle <> psNone) and P.PointInPath(Pp.X, Pp.Y, AShape.FillRule.IntValue) then
     begin
       Result := AShape;
       exit;
@@ -440,7 +452,7 @@ begin
   // Shape and ViewPort (includes Image)
   if (AGraphic is TpgShape) or (AGraphic is TpgViewPort) then
   begin
-    AGraphic.PlayFillPath(APath, ACanvas.DeviceInfo^);
+    TShapeAccess(AGraphic).PlayFillPath(APath, ACanvas.DeviceInfo^);
     exit;
   end;
 
@@ -475,24 +487,25 @@ begin
 end;
 
 procedure TpgRenderer.RenderGraphic(ACanvas: TpgCanvas; AGraphic: TpgGraphic);
-{var
+var
   Item: TpgBoundsItem;
   Stroke: TpgStroke;
-  R: TpgBox;}
+  State: TpgState;
+  R: TpgBox;
 begin
   inherited;
-{  // diag
-  Item := TpgBoundsItem(SyncList.ById(AGraphic.Id));
+  // diag
+  Item := TpgBoundsItem.Create; //todo based on AGraphic;
   if assigned(Item) and Item.BoundsValid then
   begin
-    Canvas.Push;
-    Stroke := Canvas.NewStroke;
-    Stroke.AsColor32 := clBlue32;
+    State := ACanvas.Push;
+    Stroke := ACanvas.NewStroke;
+    Stroke.Color := clBlue32;
     Stroke.Width := 1;
     R := Item.FTightBB;
-    Canvas.PaintRectangle(R.Left, R.Top, pgWidthS(R), pgHeightS(R), 0, 0, nil, Stroke);
-    Canvas.Pop;
-  end;}
+    ACanvas.PaintRectangle(R.Left, R.Top, pgWidth(R), pgHeight(R), 0, 0, nil, Stroke);
+    ACanvas.Pop(State);
+  end;
 end;
 
 procedure TpgRenderer.RenderHover(ACanvas: TpgCanvas; AGraphic: TpgGraphic; ATransform: TpgTransform);
@@ -565,7 +578,7 @@ end;
 
 procedure TpgRenderer.SetScene(AScene: TpgScene);
 begin
-  FSyncList.Scene := AScene;
+//  FSyncList.Scene := AScene;
 end;
 
 end.

@@ -12,7 +12,7 @@ interface
 
 uses
   Classes, SysUtils, Contnrs,
-  pgBitmap, pgPath, Pyro, pgCover, pgRasterize, pgColor, pgPolyPolygon;
+  pgBitmap, pgPath, Pyro, pgCover, pgPolygonRasterizer, pgColor, pgPolygon;
 
 type
 

@@ -36,10 +36,7 @@ unit pgColor;
 interface
 
 uses
-  SysUtils, Pyro, sdDebug;
-
-// Element size in bytes for a color with AInfo
-function pgColorElementSize(const AInfo: TpgColorInfo): integer;
+  SysUtils, Pyro;
 
 // Convert R, G, B, A 8bpc to TpgColorARGB
 function pgColorARGB(R, G, B: byte; A: byte = $FF): TpgColorARGB;
@@ -73,13 +70,6 @@ function pgCompareColorInfo(const InfoA, InfoB: TpgColorInfo): boolean;
 function InterpolateColor(const Col1, Col2: TpgColor32; const Frac: double): TpgColor32;
 
 implementation
-
-function pgColorElementSize(const AInfo: TpgColorInfo): integer;
-const
-  cByteCount: array[TpgBitsPerChannel] of integer = (1, 2);
-begin
-  Result := cByteCount[AInfo.BitsPerChannel] * AInfo.Channels;
-end;
 
 function pgColorARGB(R, G, B: byte; A: byte = $FF): TpgColorARGB;
 begin

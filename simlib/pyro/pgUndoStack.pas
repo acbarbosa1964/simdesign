@@ -1,5 +1,8 @@
 { Project: Pyro
 
+  Description:
+  Undo Stack (todo)
+
   Author: Nils Haeck (n.haeck@simdesign.nl)
   Copyright (c) 2006 - 2011 SimDesign BV
 }
@@ -8,21 +11,21 @@ unit pgUndoStack;
 interface
 
 uses
-  Classes, SysUtils, Contnrs, pgScene, Pyro, pgDocument, pgBinaryStorage;
+  Classes, SysUtils, Contnrs, pgScene, Pyro, pgDocument, pgStorage;
 
 type
 
   TpgUndoItem = class(TPersistent)
   private
     FPropId: longword;
-    FElementId: longword;
+    FElement: TpgElement;
     FChange: TpgChangeType;
     FData: string;
   public
     // Change type registered in this undo item
     property Change: TpgChangeType read FChange write FChange;
-    // Element Id the change applies to
-    property ElementId: longword read FElementId write FElementId;
+    // Element the change applies to
+    property Element: TpgElement read FElement write FElement;
     // Prop Id the change applies to
     property PropId: longword read FPropId write FPropId;
     // Binary data string containing change
@@ -49,9 +52,8 @@ type
     FStream: TMemoryStream;
     FOnMessage: TpgMessageEvent;
     procedure SetScene(const Value: TpgScene);
-    procedure SceneChange(Sender: TObject; AElementId, APropId: longword;
-      AChange: TpgChangeType);
-    function RegisterPropChange(AItem: TpgUndoItem; AElementId, APropId: longword): boolean;
+    procedure SceneChange(Sender: TObject; AElement: TpgElement; APropId: longword; AChange: TpgChangeType);
+    function RegisterPropChange(AItem: TpgUndoItem; AElement: TpgElement; APropId: longword): boolean;
     function GetLastItem(AList: TpgUndoItemList): TpgUndoItem;
     procedure DoMessage(const AMessage: string);
   public
@@ -73,7 +75,7 @@ type
 implementation
 
 type
-  TPropAccess = class(TpgStoredProp);
+  TPropAccess = class(TpgProp);
 
 { TpgUndoItemList }
 
@@ -127,29 +129,27 @@ begin
 //
 end;
 
-function TpgUndoStack.RegisterPropChange(AItem: TpgUndoItem; AElementId, APropId: longword): boolean;
+function TpgUndoStack.RegisterPropChange(AItem: TpgUndoItem; AElement: TpgElement; APropId: longword): boolean;
 var
-  Element: TpgElement;
   Prop: TpgProp;
   Count: integer;
 begin
   Result := False;
-  Element := FScene.ElementById(AElementId);
-  if not assigned(Element) or (efTemporary in Element.Flags) then
+  if (AElement = nil) or (not FScene.ExistsElement(AElement)) or (efTemporary in AElement.Flags) then
     exit;
-  Prop := Element.PropById(APropId);
-  if not (Prop is TpgStoredProp) then
+  Prop := AElement.PropById(APropId);
+  if not (Prop is TpgProp) then
     exit;
   // Clear stream, and write
   FStream.Clear;
-  TPropAccess(Prop).Write(FStorage);
+  //todo TPropAccess(Prop).Write(FStorage);
   // How much bytes written?
   Count := FStream.Size;
   if Count > 0 then
   begin
     // Store information in AItem
     AItem.Change := ctPropUpdate;
-    AItem.ElementId := AElementId;
+    AItem.Element := AElement;
     AItem.PropId := APropId;
     SetLength(AItem.FData, Count);
     // Copy data from stream to binary data string
@@ -158,8 +158,7 @@ begin
   end;
 end;
 
-procedure TpgUndoStack.SceneChange(Sender: TObject; AElementId, APropId: longword;
-  AChange: TpgChangeType);
+procedure TpgUndoStack.SceneChange(Sender: TObject; AElement: TpgElement; APropId: longword; AChange: TpgChangeType);
 var
   List: TpgUndoItemList;
   Item, Last: TpgUndoItem;
@@ -187,7 +186,7 @@ begin
       Last := GetLastItem(List);
       if assigned(Last) and
         (Last.Change = ctPropUpdate) and
-        (Last.ElementId = AElementId) and
+        (Last.Element = AElement) and
         (Last.PropId = APropId) then
       begin
         // Repeated change, skip
@@ -195,9 +194,9 @@ begin
       begin
         // We register this property change in Item, and add it to the list
         Item := TpgUndoItem.Create;
-        if RegisterPropChange(Item, AElementId, APropId) then
+        if RegisterPropChange(Item, AElement, APropId) then
         begin
-          DoMessage(Format('Undo%.4d: PropUpdate Element %d Prop %d', [List.Count, AElementId, APropId]));
+          DoMessage(Format('Undo%.4d: PropUpdate Element %s Prop %d', [List.Count, AElement.Name, APropId]));
           List.Add(Item)
         end else
           Item.Free;
@@ -221,7 +220,6 @@ begin
       L := FScene.Listeners.AddRef(Self);
       L.OnBeforeChange := SceneChange;
     end;
-    FStorage.Document := FScene;
   end;
 end;
 

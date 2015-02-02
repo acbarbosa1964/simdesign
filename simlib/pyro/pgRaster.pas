@@ -15,7 +15,7 @@ unit pgRaster;
 interface
 
 uses
-  Classes, Contnrs, pgBitmap, sdDebug;
+  Classes, Contnrs, pgBitmap, NativeXml;
 
 type
 
@@ -30,7 +30,7 @@ type
     crfTGA
   );
 
-  TpgRasterFormat = class(TDebugPersistent)
+  TpgRasterFormat = class(TsdDebugPersistent)
   private
     FSaveQuality: integer;
     FAlphaThreshold: byte;

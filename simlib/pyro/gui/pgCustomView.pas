@@ -8,13 +8,14 @@ unit pgCustomView;
 interface
 
 uses
-  Messages, Classes, Graphics, pgControls, pgContentProvider, pgPlatform, Pyro;
+  Messages, Classes, Graphics,
+  pgPyroControl, pgContentProvider, pgPlatform, Pyro;
 
 type
 
-  // Simple viewer based on TpgCustomControl, thus having a TpgCanvas, and
+  // Simple viewer based on TpgPyroControl, thus having a TpgCanvas, and
   // implementing a provider connection (without any mouse handling)
-  TpgCustomView = class(TpgCustomControl)
+  TpgCustomView = class(TpgPyroControl)
   private
     FProvider: TpgContentProvider;
     procedure SetProvider(const Value: TpgContentProvider);
@@ -26,8 +27,8 @@ type
     destructor Destroy; override;  
   published
     property Provider: TpgContentProvider read FProvider write SetProvider;
-    //property Align;
-{    property Anchors;
+    property Align;
+    property Anchors;
     property AutoSize;
     property BevelInner;
     property BevelOuter;
@@ -76,7 +77,7 @@ type
     property OnResize;
     property OnStartDock;
     property OnStartDrag;
-    property OnUnDock;}
+    property OnUnDock;
   end;
 
 implementation

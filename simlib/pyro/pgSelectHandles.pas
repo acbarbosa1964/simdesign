@@ -12,8 +12,8 @@ unit pgSelectHandles;
 interface
 
 uses
-  pgSelector, pgTransform, pgText, pgShape, pgImage, pgCanvas,
-  pgGeometry, Pyro, pgColor, pgViewPort, Math, pgProjectiveTransform;
+  pgSelector, pgTransform, pgScene, pgCanvas,
+  pgGeometry, Pyro, pgColor;
 
 type
 
@@ -84,16 +84,16 @@ begin
       TpgText(AGraphic).Y.Values[0].Value);
   gtRectangle:
     FBaseS := pgPoint(
-      TpgRectangle(AGraphic).X.Value,
-      TpgRectangle(AGraphic).Y.Value);
+      TpgRectangle(AGraphic).X.FloatValue,
+      TpgRectangle(AGraphic).Y.FloatValue);
   gtEllipse:
     FBaseS := pgPoint(
-      TpgEllipse(AGraphic).Cx.Value,
-      TpgEllipse(AGraphic).Cy.Value);
+      TpgEllipse(AGraphic).Cx.FloatValue,
+      TpgEllipse(AGraphic).Cy.FloatValue);
   gtImageView:
     FBaseS := pgPoint(
-      TpgImageView(AGraphic).X.Value,
-      TpgImageView(AGraphic).Y.Value);
+      TpgImageView(AGraphic).X.FloatValue,
+      TpgImageView(AGraphic).Y.FloatValue);
   end;
 end;
 
@@ -108,18 +108,18 @@ begin
     end;
   gtRectangle:
     begin
-      TpgRectangle(AGraphic).X.Value := FDragS.X;
-      TpgRectangle(AGraphic).Y.Value := FDragS.Y;
+      TpgRectangle(AGraphic).X.FloatValue := FDragS.X;
+      TpgRectangle(AGraphic).Y.FloatValue := FDragS.Y;
     end;
   gtEllipse:
     begin
-      TpgEllipse(AGraphic).Cx.Value := FDragS.X;
-      TpgEllipse(AGraphic).Cy.Value := FDragS.Y;
+      TpgEllipse(AGraphic).Cx.FloatValue := FDragS.X;
+      TpgEllipse(AGraphic).Cy.FloatValue := FDragS.Y;
     end;
   gtImageView:
     begin
-      TpgImageView(AGraphic).X.Value := FDragS.X;
-      TpgImageView(AGraphic).Y.Value := FDragS.Y;
+      TpgImageView(AGraphic).X.FloatValue := FDragS.X;
+      TpgImageView(AGraphic).Y.FloatValue := FDragS.Y;
     end;
   end;
 end;
@@ -158,11 +158,11 @@ begin
   gtLine:
     case FInfo of
     0: FBaseS := pgPoint(
-         TpgLine(AGraphic).X1.Value,
-         TpgLine(AGraphic).Y1.Value);
+         TpgLine(AGraphic).X1.FloatValue,
+         TpgLine(AGraphic).Y1.FloatValue);
     1: FBaseS := pgPoint(
-         TpgLine(AGraphic).X2.Value,
-         TpgLine(AGraphic).Y2.Value);
+         TpgLine(AGraphic).X2.FloatValue,
+         TpgLine(AGraphic).Y2.FloatValue);
     end;
   end;
 end;
@@ -180,13 +180,13 @@ begin
     case FInfo of
     0:
       begin
-        TpgLine(AGraphic).X1.Value := FDragS.X;
-        TpgLine(AGraphic).Y1.Value := FDragS.Y;
+        TpgLine(AGraphic).X1.FloatValue := FDragS.X;
+        TpgLine(AGraphic).Y1.FloatValue := FDragS.Y;
       end;
     1:
       begin
-        TpgLine(AGraphic).X2.Value := FDragS.X;
-        TpgLine(AGraphic).Y2.Value := FDragS.Y;
+        TpgLine(AGraphic).X2.FloatValue := FDragS.X;
+        TpgLine(AGraphic).Y2.FloatValue := FDragS.Y;
       end;
     end;
   end;
@@ -224,11 +224,11 @@ begin
   // Get original value
   if not (mfOnlyY in FMoveFlags) then begin
     Prop := TpgLengthProp(AGraphic.PropById(FPropIdX));
-    FOrig.X := Prop.Value;
+    FOrig.X := Prop.FloatValue;
   end;
   if not (mfOnlyX in FMoveFlags) then begin
     Prop := TpgLengthProp(AGraphic.PropById(FPropIdY));
-    FOrig.Y := Prop.Value;
+    FOrig.Y := Prop.FloatValue;
   end;
 end;
 
@@ -245,7 +245,7 @@ begin
       Value := FDeltaS.X;
     Value := FOrig.X + Value;
     if mfNoNegative in FMoveFlags then Value := pgMax(0, Value);
-    Prop.Value := Value;
+    Prop.FloatValue := Value;
   end;
   if not (mfOnlyX in FMoveFlags) then begin
     Prop := TpgLengthProp(AGraphic.PropById(FPropIdY));
@@ -255,7 +255,7 @@ begin
       Value := FDeltaS.Y;
     Value := FOrig.Y + Value;
     if mfNoNegative in FMoveFlags then Value := pgMax(0, Value);
-    Prop.Value := Value;
+    Prop.FloatValue := Value;
   end;
 end;
 
@@ -305,7 +305,7 @@ begin
       tsTranslate: AT.Translate(DeltaS.X, DeltaS.Y);
       tsRotate:
         begin
-          Angle := ArcTan2(DeltaS.X, OriginS.Y - BaseS.Y - DeltaS.Y);
+          Angle := pgArcTan2(DeltaS.X, OriginS.Y - BaseS.Y - DeltaS.Y);
           AT.Rotate(Angle * 180 / pi, OriginS.X, OriginS.Y);
         end;
       tsScaleX:
@@ -333,14 +333,14 @@ begin
         end;
       tsSkewX:
         begin
-          Angle := ArcTan2(DeltaS.X, BaseS.Y - OriginS.Y + DeltaS.Y);
+          Angle := pgArcTan2(DeltaS.X, BaseS.Y - OriginS.Y + DeltaS.Y);
           AT.Translate(OriginS.X, OriginS.Y);
           AT.SkewX(Angle * 180 / pi);
           AT.Translate(-OriginS.X, -OriginS.Y);
         end;
       tsSkewY:
         begin
-          Angle := ArcTan2(DeltaS.Y, BaseS.X - OriginS.X + DeltaS.X);
+          Angle := pgArcTan2(DeltaS.Y, BaseS.X - OriginS.X + DeltaS.X);
           AT.Translate(OriginS.X, OriginS.Y);
           AT.SkewY(Angle * 180 / pi);
           AT.Translate(-OriginS.X, -OriginS.Y);

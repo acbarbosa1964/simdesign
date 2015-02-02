@@ -1,7 +1,7 @@
-{ <b>Project</b>: Pyro<p>
-  <b>Module</b>: Pyro Render<p>
+{ Project: Pyro
+  Module: Pyro Render
 
-  <b>Description:</b><p>
+  Description:
   Sampling of maps, returning data from a map through a transformation
 
   Samplers are classes that provide color information sampled from a source to
@@ -16,8 +16,8 @@
   Modifications:
   13Oct2005: added oversampling
 
-  <b>Author</b>: Nils Haeck (n.haeck@simdesign.nl)<p>
-  Copyright (c) 2005 - 2006 SimDesign BV
+  Author: Nils Haeck (n.haeck@simdesign.nl)
+  Copyright (c) 2005 - 2011 SimDesign BV
 }
 unit pgSampler;
 
@@ -26,7 +26,9 @@ unit pgSampler;
 interface
 
 uses
-  Classes, SysUtils, pgTransform, Pyro, pgColor, pgBitmap, pgGeometry, Math, sdDebug;
+  Classes, SysUtils,
+  // pyro
+  pgTransform, Pyro, pgColor, pgBitmap, pgGeometry;
 
 type
 
@@ -92,15 +94,6 @@ type
 // Create Den parts from Num, with positions in Positions (zerobased)
 procedure CreateDivision(Num, Den: integer; var Positions: array of integer);
 
-const
-  // Max oversampling size (nxn)
-  cMaxOversampling = 6;
-
-resourcestring
-  sUnsupportedBitsPerChannel = 'Unsupported Bits Per Channel';
-  sIllegalOverSamplingValue  = 'Illegal oversampling value';
-  sNotImplemented            = 'This mode is not implemented';
-
 implementation
 
 type
@@ -113,13 +106,15 @@ var
   IsNeg: boolean;
 begin
   // special case: just all zeros?
-  if Num = 0 then begin
+  if Num = 0 then
+  begin
     FillChar(Positions[0], SizeOf(integer) * (Den + 1), 0);
     exit;
   end;
 
   // Always work with positive values
-  if Num < 0 then begin
+  if Num < 0 then
+  begin
     IsNeg := True;
     Num := -Num;
   end else
@@ -129,11 +124,13 @@ begin
   Left := 0;
   Width := Num div Den;
   RunInc := Num - Width * Den;
-  for i := 0 to Den - 1 do begin
+  for i := 0 to Den - 1 do
+  begin
     Positions[i] := Left;
     inc(Left, Width);
     inc(Run, RunInc);
-    if Run >= Den then begin
+    if Run >= Den then
+    begin
       inc(Left);
       dec(Run, Den);
     end;
@@ -209,18 +206,23 @@ var
   P, Q: PByte;
   Totals: array[0..7] of integer;
 begin
-  if FMap.ColorInfo.BitsPerChannel = bpc8bits then begin
+  if FMap.ColorInfo.BitsPerChannel = bpc8bits then
+  begin
     P := @FBuffer[0];
     Q := @FWorkBuf[0];
-    for i := 0 to ACount - 1 do begin
+    for i := 0 to ACount - 1 do
+    begin
       FillChar(Totals[0], FElementSize * SizeOf(integer), 0);
-      for j := 0 to FSamplingCount - 1 do begin
-        for k := 0 to FElementSize - 1 do begin
+      for j := 0 to FSamplingCount - 1 do
+      begin
+        for k := 0 to FElementSize - 1 do
+        begin
           inc(Totals[k], Q^);
           inc(Q);
         end;
       end;
-      for k := 0 to FElementSize - 1 do begin
+      for k := 0 to FElementSize - 1 do
+      begin
         P^ := Totals[k] div FSamplingCount;
         inc(P);
       end;
@@ -241,25 +243,29 @@ begin
   Xf := X + 0.5;
   Yf := Y + 0.5;
   P := @FBuffer[0];
-  if FIsLinear then begin
+  if FIsLinear then
+  begin
     Pt := FInvertedTransform.Transform(pgPoint(Xf, Yf));
 
     // Start point
-    XStart := floor(Pt.X * 256);
-    YStart := floor(Pt.Y * 256);
+    XStart := pgFloor(Pt.X * 256);
+    YStart := pgFloor(Pt.Y * 256);
 
     // Get results for transformed points
-    for i := 0 to Count - 1 do begin
+    for i := 0 to Count - 1 do
+    begin
       TMapAccess(FMap).GetElementLinear256(XStart + FXSpans[i], YStart + FYSpans[i], P);
       inc(P, FElementSize);
     end;
 
-  end else begin
+  end else
+  begin
 
     // Transform each point, and get result
-    for i := 0 to Count - 1 do begin
+    for i := 0 to Count - 1 do
+    begin
       Pt := FInvertedTransform.Transform(pgPoint(Xf + i, Yf));
-      TMapAccess(FMap).GetElementLinear256(floor(Pt.X * 256), floor(Pt.Y * 256), P);
+      TMapAccess(FMap).GetElementLinear256(pgFloor(Pt.X * 256), pgFloor(Pt.Y * 256), P);
       inc(P, FElementSize);
     end;
 
@@ -284,34 +290,40 @@ begin
   if WorkBufSize > length(FWorkBuf) then
     SetLength(FWorkBuf, WorkBufSize);
 
-  if FIsLinear then begin
+  if FIsLinear then
+  begin
     // For each sample get the values
     P := @FWorkBuf[0];
     Pb := pgPoint(Xf, Yf);
-    for i := 0 to FSamplingCount - 1 do begin
+    for i := 0 to FSamplingCount - 1 do
+    begin
       Q := P;
       Pt := FInvertedTransform.Transform(pgAddPoint(FSamplingPoints[i], Pb));
-      XStart := floor(Pt.X * 256);
-      YStart := floor(Pt.Y * 256);
+      XStart := pgFloor(Pt.X * 256);
+      YStart := pgFloor(Pt.Y * 256);
       // Get results for transformed points
-      for j := 0 to Count - 1 do begin
+      for j := 0 to Count - 1 do
+      begin
         TMapAccess(FMap).GetElementLinear256(XStart + FXSpans[j], YStart + FYSpans[j], Q);
         inc(Q, WorkSize);
       end;
       inc(P, FElementSize);
     end;
 
-  end else begin
+  end else
+  begin
 
     // For each sample get the values
     P := @FWorkBuf[0];
-    for i := 0 to FSamplingCount - 1 do begin
+    for i := 0 to FSamplingCount - 1 do
+    begin
       Q := P;
       // Get results for transformed points
-      for j := 0 to Count - 1 do begin
+      for j := 0 to Count - 1 do
+      begin
         Pt := FInvertedTransform.Transform(
           pgAddPoint(FSamplingPoints[i], pgPoint(Xf + j, Yf)));
-        TMapAccess(FMap).GetElementLinear256(floor(Pt.X * 256), floor(Pt.Y * 256), Q);
+        TMapAccess(FMap).GetElementLinear256(pgFloor(Pt.X * 256), pgFloor(Pt.Y * 256), Q);
         inc(Q, WorkSize);
       end;
       inc(P, FElementSize);
@@ -335,24 +347,28 @@ begin
   Xf := X + 0.5;
   Yf := Y + 0.5;
   P := @FBuffer[0];
-  if FIsLinear then begin
+  if FIsLinear then
+  begin
 
     Pt := FInvertedTransform.Transform(pgPoint(Xf, Yf));
-    XStart := floor(Pt.X * 256);
-    YStart := floor(Pt.Y * 256);
+    XStart := pgFloor(Pt.X * 256);
+    YStart := pgFloor(Pt.Y * 256);
 
     // Get results for transformed points
-    for i := 0 to Count - 1 do begin
+    for i := 0 to Count - 1 do
+    begin
       TMapAccess(FMap).GetElement(pgSAR8(XStart + FXSpans[i]), pgSAR8(YStart + FYSpans[i]), P);
       inc(P, FElementSize);
     end;
 
-  end else begin
+  end else
+  begin
 
     // Transform each point, and get result
-    for i := 0 to Count - 1 do begin
+    for i := 0 to Count - 1 do
+    begin
       Pt := FInvertedTransform.Transform(pgPoint(Xf + i, Yf));
-      TMapAccess(FMap).GetElement(floor(Pt.X), floor(Pt.Y), P);
+      TMapAccess(FMap).GetElement(pgFloor(Pt.X), pgFloor(Pt.Y), P);
       inc(P, FElementSize);
     end;
 
@@ -377,34 +393,40 @@ begin
   if WorkBufSize > length(FWorkBuf) then
     SetLength(FWorkBuf, WorkBufSize);
 
-  if FIsLinear then begin
+  if FIsLinear then
+  begin
     // For each sample get the values
     P := @FWorkBuf[0];
     Pb := pgPoint(Xf, Yf);
-    for i := 0 to FSamplingCount - 1 do begin
+    for i := 0 to FSamplingCount - 1 do
+    begin
       Q := P;
       Pt := FInvertedTransform.Transform(pgAddPoint(FSamplingPoints[i], Pb));
-      XStart := floor(Pt.X * 256);
-      YStart := floor(Pt.Y * 256);
+      XStart := pgFloor(Pt.X * 256);
+      YStart := pgFloor(Pt.Y * 256);
       // Get results for transformed points
-      for j := 0 to Count - 1 do begin
+      for j := 0 to Count - 1 do
+      begin
         TMapAccess(FMap).GetElement(pgSAR8(XStart + FXSpans[j]), pgSAR8(YStart + FYSpans[j]), Q);
         inc(Q, WorkSize);
       end;
       inc(P, FElementSize);
     end;
 
-  end else begin
+  end else
+  begin
 
     // For each sample get the values
     P := @FWorkBuf[0];
-    for i := 0 to FSamplingCount - 1 do begin
+    for i := 0 to FSamplingCount - 1 do
+    begin
       Q := P;
       // Get results for transformed points
-      for j := 0 to Count - 1 do begin
+      for j := 0 to Count - 1 do
+      begin
         Pt := FInvertedTransform.Transform(
           pgAddPoint(FSamplingPoints[i], pgPoint(Xf + j, Yf)));
-        TMapAccess(FMap).GetElement(floor(Pt.X), floor(Pt.Y), Q);
+        TMapAccess(FMap).GetElement(pgFloor(Pt.X), pgFloor(Pt.Y), Q);
         inc(Q, WorkSize);
       end;
       inc(P, FElementSize);
@@ -421,7 +443,8 @@ var
   P1, P2: TpgPoint;
 begin
   inherited;
-  if FIsLinear then begin
+  if FIsLinear then
+  begin
     // X and Y spans length
     SetLength(FXSpans, AWidth + 1);
     SetLength(FYSpans, AWidth + 1);
@@ -437,7 +460,8 @@ end;
 
 procedure TpgMapSampler.SetInterpolationMethod(const Value: TpgInterpolationMethod);
 begin
-  if FInterpolationMethod <> Value then begin
+  if FInterpolationMethod <> Value then
+  begin
     FInterpolationMethod := Value;
     UpdateFunctions;
   end;
@@ -445,7 +469,8 @@ end;
 
 procedure TpgMapSampler.SetOverSampling(const Value: integer);
 begin
-  if FOverSampling <> Value then begin
+  if FOverSampling <> Value then
+  begin
     FOverSampling := pgLimit(Value, 1, cMaxOverSampling);
     UpdateFunctions;
   end;
@@ -467,7 +492,8 @@ begin
     imLinear:  FMapBufferFunc := MapBufferLinearNxN;
     end;
   // sampling positions
-  if FSamplingCount > 1 then begin
+  if FSamplingCount > 1 then
+  begin
     SetLength(FSamplingPoints, FSamplingCount);
     for i := 0 to FOverSampling - 1 do
       for j := 0 to FOverSampling - 1 do

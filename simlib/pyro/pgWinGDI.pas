@@ -17,7 +17,11 @@ unit pgWinGDI;
 interface
 
 uses
-  SysUtils, Graphics, pgSurface, Pyro, pgColor, pgBitmap, pgCanvas, pgBlend;
+  // uses Graphics: TBitmap
+  SysUtils, Graphics,
+
+  // pyro
+  pgSurface, pgColor, pgBitmap, pgCanvas, Pyro;
 
 type
 
@@ -56,8 +60,6 @@ procedure ConvertBmpToMapWithInfo(
   AMap: TpgColorMap; const AMapInfo: TpgColorInfo);
 
 procedure ConvertMapToBmp(AMap: TpgColorMap; ABmp: TBitmap);
-
-//function pgBoxToRect(const ABox: TpgBox): TRect;
 
 resourcestring
 
@@ -107,7 +109,7 @@ begin
         if integer(P2) < integer(P) then
           P := ABitmap.ScanLine[ABitmap.Height - 1];
       end;
-      FillLongWord(P^, ABitmap.Width * ABitmap.Height, AColor);
+      pgFillLongWord(P^, ABitmap.Width * ABitmap.Height, AColor);
     end;
   pf24bit:
     begin

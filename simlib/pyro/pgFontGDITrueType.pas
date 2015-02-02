@@ -14,9 +14,10 @@
 
   Modified:
   13jun2011: placed all the M$ code in pgPlatform.pas
+  10oct2012: fixed bug - PChar replaced by PAnsiChar
 
   Author: Nils Haeck (n.haeck@simdesign.nl)
-  Copyright (c) 2004 - 2011 SimDesign BV
+  Copyright (c) 2004 - 2012 SimDesign BV
 }
 unit pgFontGDITrueType;
 
@@ -25,7 +26,7 @@ unit pgFontGDITrueType;
 interface
 
 uses
-  SysUtils, sdSortedLists, pgRenderFont, pgPath, pgPlatform, Pyro{, Math};
+  SysUtils, sdSortedLists, pgFontUsingRender, pgPath, pgPlatform, Pyro;
 
 type
 
@@ -227,7 +228,7 @@ begin
     APoint := AStart;
 
     // Curve points
-    PChar(ACurve) := pChar(Header) + SizeOf(TpgTTPolygonHeader);
+    PAnsiChar(ACurve) := PAnsiChar(Header) + SizeOf(TpgTTPolygonHeader);
     ACount := 0;
     Path.MoveTo(APoint.X, APoint.Y);
     while ACount < ASize do
@@ -281,7 +282,7 @@ begin
       // Move pointers
       ADelta := SizeOf(TpgTTPolyCurve) + (ACurve^.cpfx - 1) * SizeOf(TpgPointFX);
       inc(ACount, ADelta);
-      PChar(ACurve) := PChar(ACurve) + ADelta;
+      PAnsiChar(ACurve) := PAnsiChar(ACurve) + ADelta;
 
     end;// while
 

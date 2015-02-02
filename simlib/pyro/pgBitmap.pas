@@ -14,7 +14,8 @@ interface
 {$i simdesign.inc}
 
 uses
-  pgColor, Pyro, sdMapIterator, Classes, SysUtils;
+  Classes, SysUtils,
+  pgColor, Pyro, sdMapIterator;
 
 type
 
@@ -139,7 +140,7 @@ type
     property Pixels[x, y: integer]: TpgColor32 read GetPixels write SetPixels;
   end;
 
-  // added for compat Gr32
+  // TpgBitmap32 added for compat with Graphics32
   TpgBitmap32 = class(TpgBitmap)
   private
     function GetBits: PpgColor32Array;

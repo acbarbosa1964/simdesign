@@ -17,8 +17,11 @@ unit pgCanvas;
 interface
 
 uses
-  Classes, Contnrs, SysUtils, sdSortedLists,
-  pgPath, pgTransform, pgColor, pgBitmap, pgBlend, pgRegion, Pyro, sdDebug;
+  Classes, Contnrs, SysUtils,
+  // simdesign
+  sdSortedLists,
+  // pyro
+  pgPath, pgTransform, pgColor, pgBitmap, pgBlend, pgRegion, Pyro;
 
 type
 
@@ -256,8 +259,8 @@ type
     procedure Pop(AState: TpgState); virtual;
     // Create a new layer, which contains a new canvas of same class as this one
     // on which the application can draw. The layer contains a buffer and effects
-    // can be applied to it. Pass ALayerID = 0 to get a temporary layer, which
-    // will be destroyed after the call to PopLayer. Pass ALayerID > 0 to get
+    // can be applied to it. Pass ALayerGuid = cEmptyGuid to get a temporary layer, which
+    // will be destroyed after the call to PopLayer. Pass ALayerID <> cEmptyGuid to get
     // a layer that is cached, and can be retrieved on next draw with the same
     // layer ID. The layer's ID is property LayerID.
     // Check if a layer is still cached by reading the IsCached property. If a
@@ -267,7 +270,8 @@ type
     // to PopPayer. PopLayer will draw the layer to the background. After the
     // PopLayer, the layer's canvas is no longer valid. The layer however, will
     // remain in existance if created with ALayerID > 0.
-    function PushLayer(ALayerID: integer = 0; CopyBackground: boolean = False): TpgLayer;
+    function PushLayer: TpgLayer; overload;
+    function PushLayer(ALayerGuid: TGuid {= cEmptyGuid}; CopyBackground: boolean = False): TpgLayer; overload;
     // Pop a previously pushed layer (see PushLayer)
     procedure PopLayer(ALayer: TpgLayer);
     // Add (concat) a transform to the current transform list. The transform
@@ -337,7 +341,7 @@ type
   TpgLayer = class(TPersistent)
   private
     FEffects: TpgRasterEffectList;
-    FLayerID: integer;
+    FLayerGuid: TGuid;
     FIsCached: boolean;
     FState: TpgState;
     FCopyBackground: boolean;
@@ -352,20 +356,22 @@ type
   public
     destructor Destroy; override;
     property Effects: TpgRasterEffectList read FEffects;
-    property LayerID: integer read FLayerID;
+    property LayerGuid: TGuid read FLayerGuid;
     property Canvas: TpgCanvas read FCanvas;
     property IsCached: boolean read FIsCached;
     property Opacity: double read FOpacity write FOpacity;
   end;
 
   //  List of canvas layers
-  TpgLayerList = class(TUniqueIDList)
+  // todo: TUniqueIDList replaced by TGuidList in sdSortedLists.pas
+  TpgLayerList = class(TGuidList)
   private
     function GetItems(Index: integer): TpgLayer;
   protected
-    function GetID(AItem: TObject): integer; override;
+    function GetGuid(AItem: TObject): TGuid; override;
+    //function GetID(AItem: TObject): integer; override;
   public
-    function ByID(AID: integer): TpgLayer;
+    function ByGuid(AGuid: TGuid): TpgLayer;
     property Items[Index: integer]: TpgLayer read GetItems; default;
   end;
 
@@ -817,13 +823,14 @@ end;
 
 procedure TpgCanvas.PopLayer(ALayer: TpgLayer);
 begin
-  if not assigned(ALayer) then exit;
+  if not assigned(ALayer) then
+    exit;
   // Paint the layer
   ALayer.Paint;
   // Pop it..
   Pop(ALayer.FState);
   // Temporary layer?
-  if ALayer.LayerID = 0 then
+  if IsEmptyGuid(ALayer.LayerGuid) then
     ALayer.Free
   else
   begin
@@ -843,20 +850,27 @@ begin
   FStates.Add(Result);
 end;
 
-function TpgCanvas.PushLayer(ALayerID: integer; CopyBackground: boolean): TpgLayer;
+function TpgCanvas.PushLayer: TpgLayer;
+//var
+//  S: TpgState;
+begin
+  Result := PushLayer(cEmptyGuid);
+end;
+
+function TpgCanvas.PushLayer(ALayerGuid: TGuid; CopyBackground: boolean): TpgLayer;
 var
   S: TpgState;
 begin
   S := Push;
-  if ALayerID = 0 then
+  if IsEmptyGuid(ALayerGuid) then
     Result := nil
   else
-    Result := FLayers.ByID(ALayerID);
+    Result := FLayers.ByGuid(ALayerGuid);
   if not assigned(Result) then
   begin
     Result := CreateLayer;
-    Result.FLayerID := ALayerID;
-    if ALayerID <> 0 then
+    Result.FLayerGuid := ALayerGuid;
+    if not IsEmptyGuid(ALayerGuid) then
       FLayers.Add(Result);
   end;
   Result.FState := S;
@@ -908,19 +922,19 @@ end;
 
 { TpgLayerList }
 
-function TpgLayerList.ByID(AID: integer): TpgLayer;
+function TpgLayerList.ByGuid(AGuid: TGuid): TpgLayer;
 var
   Index: integer;
 begin
-  if IndexByID(AID, Index) then
+  if IndexByGuid(AGuid, Index) then
     Result := Items[Index]
   else
     Result := nil;
 end;
 
-function TpgLayerList.GetID(AItem: TObject): integer;
+function TpgLayerList.GetGuid(AItem: TObject): TGuid;
 begin
-  Result := TpgLayer(AItem).LayerID;
+  Result := TpgLayer(AItem).LayerGuid;
 end;
 
 function TpgLayerList.GetItems(Index: integer): TpgLayer;

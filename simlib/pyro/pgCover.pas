@@ -14,7 +14,7 @@ unit pgCover;
 interface
 
 uses
-  Classes, SysUtils, Pyro, sdDebug;
+  Classes, SysUtils, Pyro;
 
 type
 
@@ -344,15 +344,17 @@ var
   i, j: integer;
 begin
   Result := '';
-  for i := 0 to FSpanCount - 1 do with FSpans[i] do begin
-    Result := Result + Format('X:%d Y:%d Cnt:%d', [XPos, YPos, Count]);
-    if Index >= 0 then begin
+  for i := 0 to FSpanCount - 1 do
+  begin
+    Result := Result + Format('X:%d Y:%d Cnt:%d', [FSpans[i].XPos, FSpans[i].YPos, FSpans[i].Count]);
+    if FSpans[i].Index >= 0 then
+    begin
       // solid span
       Result := Result + ' Cvrs: ';
-      for j := 0 to Count - 1 do
-        Result := Result + IntToHex(FCovers[Index +  j], 2) + ' ';
+      for j := 0 to FSpans[i].Count - 1 do
+        Result := Result + IntToHex(FCovers[FSpans[i].Index +  j], 2) + ' ';
     end else
-      Result := Result + ' Fixd: ' + IntToHex(-Index, 2);
+      Result := Result + ' Fixd: ' + IntToHex(-FSpans[i].Index, 2);
     Result := Result + #13#10;
   end;
 end;

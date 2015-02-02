@@ -1,2 +1,0 @@
-removehtmlnotice
-hhc triangulator.hhp

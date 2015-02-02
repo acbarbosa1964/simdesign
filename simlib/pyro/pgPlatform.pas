@@ -5,7 +5,6 @@
   - methods for truetype font processing
 
   Windows platform: define usewindows
-  - in future: uselinux, useandroid
 
 
   Author: Nils Haeck
@@ -28,7 +27,6 @@ uses
 {$ifdef usewindows}
 type
   HDC = Windows.HDC;
-  HCURSOR = Windows.HCURSOR;
 
 const
   pgSB_HORZ = SB_HORZ;
@@ -84,31 +82,6 @@ const
   pgTA_BASELINE = TA_BASELINE;
 
   pgGDI_ERROR = GDI_ERROR;
-
-{$else usewindows}
-
-const
-  pgLF_FACESIZE = 32;
-  pgGGO_NATIVE = 2;
-  pgGDI_ERROR = longword($FFFFFFFF);
-  pgTT_POLYGON_TYPE = 0;
-  pgTT_PRIM_LINE = 1;
-  pgTT_PRIM_QSPLINE = 2;
-  pgOUT_TT_ONLY_PRECIS = 7;
-  pgANTIALIASED_QUALITY = 4;
-  pgRGN_AND = 4;
-  pgTA_BASELINE = 24;
-  pgSRCCOPY = $00CC0020;
-  pgMK_SHIFT = 4;
-  pgMK_CONTROL = 8;
-  pgMK_LBUTTON = 1;
-  pgMK_MBUTTON = $10;
-  pgMK_RBUTTON = 2;
-  pgVK_MENU = 18;
-  pgVK_LEFT = 37;
-  pgVK_RIGHT = 39;
-  pgVK_UP = 38;
-  pgVK_DOWN = 40;
 
 {$endif usewindows}
 type
@@ -467,178 +440,6 @@ function pgSaveDC(DC: longword): integer;
 begin
   Result := SaveDC(DC);
 end;
-{$else usewindows}
-
-function pgGetClipBox(DC: longword; var Rect: TpgRect): integer;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgGetTickCount: longword;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgLoadCursor(hInstance: cardinal; lpCursorName: PAnsiChar): longword;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgGetStockObject(fnObject: integer): longword;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgGetCurrentThreadId: longword;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgScrollWindow(hWnd: cardinal; XAmount, YAmount: integer; ARect, AClipRect: PpgRect): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgSetScrollInfo(hWnd: cardinal; BarFlag: Integer; const ScrollInfo: TpgScrollInfo; Redraw: boolean): Integer;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgGetScrollPos(hWnd: cardinal; nBar: Integer): Integer;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgSetScrollPos(hWnd: cardinal; nBar, nPos: Integer; bRedraw: boolean): Integer;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgSetWindowOrgEx(DC: longword; X, Y: integer; Point: PpgiPoint): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgBitBlt(DestDC: longword; X, Y, Width, Height: integer; SrcDC: longword;
-  XSrc, YSrc: integer; Rop: cardinal): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgInvalidateRect(hWnd: cardinal; lpRect: PpgRect; bErase: boolean): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgGetKeyState(nVirtKey: integer): SmallInt;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgCreateCompatibleDC(DC: longword): longword;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgSelectObject(DC: longword; p2: cardinal): cardinal;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgDeleteObject(p1: cardinal): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgDeleteDC(DC: longword): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgGetGlyphOutlineW(DC: longword; uChar: cardinal; uFormat: cardinal;
-  const lpgm: TpgGlyphMetrics; cbBuffer: cardinal; lpvbuffer: pointer; const lpmat2: TpgMat2): cardinal;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgGetKerningPairs(DC: longword; Count: cardinal; var KerningPairs): cardinal;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgCreateFontIndirect(const p1: TpgLogFontA): cardinal;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgBeginPath(DC: longword): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgPolygon(DC: longword; var Points; Count: integer): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgEndPath(DC: longword): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgSelectClipPath(DC: longword; Mode: integer): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgSetTextAlign(DC: longword; Flags: cardinal): cardinal;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgPlgBlt(DestDC: longword; const PointsArray; SrcDC: longword; XSrc, YSrc, Width, Height: integer;
-  Mask: cardinal; XMask, YMask: integer): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgRestoreDC(DC: longword; SavedDC: integer): boolean;
-begin
-  //needs windows
-  Halt;
-end;
-
-function pgSaveDC(DC: longword): integer;
-begin
-  //needs windows
-  Halt;
-end;
-
 {$endif usewindows}
+
 end.

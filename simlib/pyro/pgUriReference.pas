@@ -90,7 +90,11 @@ unit pgUriReference;
 interface
 
 uses
-  Classes, SysUtils, pgDocument, pgParser, pgBase64Encode;
+  Classes, SysUtils,
+  // simdesign
+  NativeXml,
+  // pyro
+  pgDocument, pgParser;
 
 type
 

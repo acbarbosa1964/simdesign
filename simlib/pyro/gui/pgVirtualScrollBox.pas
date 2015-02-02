@@ -32,7 +32,7 @@ interface
 
 uses
   Forms, Classes, Graphics, Controls, Dialogs, Messages, SysUtils,
-  pgControls, pgCanvas, pgPlatform, Pyro, pgWinGDI;
+  pgControlUsingPyro, pgCanvas, pgPlatform, Pyro, pgWinGDI;
 
 type
 
@@ -40,7 +40,7 @@ type
   // scrollable area, indicated by VirtualWidth and VirtualHeight. The left and top
   // position of the virtual window is indicated by VirtualLeft and VirtualTop. Set
   // them all together using SetVirtualBounds() in order to avoid flicker
-  TpgVirtualScrollBox = class(TpgCustomControl)
+  TpgVirtualScrollBox = class(TpgPyroControl)
   private
     FAutoScroll: Boolean;    // If set, the control will automatically scroll
     FBorderStyle: TBorderStyle; // Border style for this scrollbox (bsNone or bsSingle)

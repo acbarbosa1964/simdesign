@@ -3,13 +3,18 @@
 
   Description:
 
-  Collection of types, constants and global functions that do not need other
-  units used in pyro engine.
+  Collection of types, constants, global functions and global variables that do
+  not need other units/classes used in pyro engine.
 
   This unit only depends on unit SysUtils (Delphi, FPC) and the
   lowlevel unit sdDebug (for debugging and compatibility for lower versions of
   Delphi, eg D5).
 
+  This unit has an initialization section:
+    // MMX Detection
+    glMMXActive := HasMMX;
+    // Default to AA precision 4 (256 levels)
+    pgSetAntiAliasing(4);
 
   Author: Nils Haeck (n.haeck@simdesign.nl)
   Copyright (c) 2006 - 2011 SimDesign BV
@@ -21,13 +26,13 @@ unit Pyro;
 interface
 
 uses
-  sdDebug, SysUtils;
+  NativeXml, SysUtils;
 
 const
 
   // Version number changes with updates. See "versions.txt" for a list of
   // updated features.
-  cPyroVersion = '1.10';
+  cPyroVersion = '1.11';
 
 type
 
@@ -249,6 +254,64 @@ const
   cIdentityMatrix: TpgMatrix =
     (A: 1; B: 0; C: 0; D: 1; E: 0; F: 0);
 
+  // TpgMatrix3x3 identity matrix
+  cIdentityMatrix3x3: TpgMatrix3x3 = (
+    (1, 0, 0),
+    (0, 1, 0),
+    (0, 0, 1));
+
+{ for pgPath / pgPathUsingCommand / pgPathUsingRender }
+
+const
+
+  cDefaultCuspLimit = 0;
+  cCurveRecursionLimit = 30;
+  cCurveCollinearityEps = 1e-30;
+
+type
+
+  TpgPathPosition = record
+    PathIndex: integer;  // index into the current path
+    PointIndex: integer; // index into the current point
+    Fraction: double;    // fraction of the length on current segment (0..1)
+  end;
+
+  TpgPathCommandStyle = (
+    pcUnknown,
+    pcClosePath,
+    pcMoveToAbs,
+    pcMoveToRel,
+    pcLineToAbs,
+    pcLineToRel,
+    pcLineToHorAbs,
+    pcLineToHorRel,
+    pcLineToVerAbs,
+    pcLineToVerRel,
+    pcCurveToCubicAbs,
+    pcCurveToCubicRel,
+    pcCurveToCubicSmoothAbs,
+    pcCurveToCubicSmoothRel,
+    pcCurveToQuadraticAbs,
+    pcCurveToQuadraticRel,
+    pcCurveToQuadraticSmoothAbs,
+    pcCurveToQuadraticSmoothRel,
+    pcArcToAbs,
+    pcArcToRel
+  );
+
+  TpgCommandPathItemRec = packed record
+    Command: TpgPathCommandStyle;
+    Index: word;
+  end;
+  PpgCommandPathItemRec = ^TpgCommandPathItemRec;
+
+type
+
+  TDoubleArray = array[0..MaxInt div SizeOf(double) - 1] of double;
+  PDoubleArray = ^TDoubleArray;
+
+function pgBoolToInt(ABool: boolean): integer;
+
 { for pgColor }
 
 const
@@ -342,6 +405,15 @@ resourcestring
 
   smpIncompatibleMapTypes = 'Incompatible map types';
 
+{ for pgSampler }
+
+const
+  // Max oversampling size (nxn)
+  cMaxOversampling = 6;
+
+resourcestring
+  sIllegalOverSamplingValue  = 'Illegal oversampling value';
+  sNotImplemented            = 'This mode is not implemented';
 
 { for Document }
 
@@ -394,6 +466,28 @@ type
     luPt,   // Points
     luPc    // Pc
   );
+
+  TpgLengthUnitsInfo = record
+    Name: Utf8String;
+    Units: TpgLengthUnits;
+  end;
+
+const
+
+  // observe the order and count!
+  cpgLengthUnitsInfo: array[TpgLengthUnits] of TpgLengthUnitsInfo =
+    ((Name: ''; Units: luNone),
+     (Name: '%'; Units: luPerc),
+     (Name: 'em'; Units: luEms),
+     (Name: 'ex'; Units: luExs),
+     (Name: 'cm'; Units: luCm),
+     (Name: 'mm'; Units: luMm),
+     (Name: 'in'; Units: luIn),
+     (Name: 'pt'; Units: luPt),
+     (Name: 'pc'; Units: luPc));
+     //(Name: 'px'; Units: luNone) - not used, but checked in pgParser
+
+type
 
   TpgPreserveAspect = (
     paNone, paXMidYMid, paXMinYMin, paXMidYMin, paXMaxYMin, paXMinYMid,
@@ -515,12 +609,12 @@ type
 
 { from pgElement.pas }
 
-  TpgElementFlag = (
+  TpgItemFlag = (
     efStored,        // The element will be stored in storage
     efAllowElements, // The element allows sub elements to be added
     efTemporary      // The element is only temporarily part of the container
   );
-  TpgElementFlags = set of TpgElementFlag;
+  TpgItemFlags = set of TpgItemFlag;
 
   TpgPropInfoFlag = (
     pfInherit, // Element can inherit this property from parent
@@ -567,6 +661,9 @@ resourcestring
   sUnknownElement      = 'Warning: unknown element with class "%s" id %d encountered, skipped.';
   sFatalReadError      = 'Fatal read error';
   sUnexpectedEndOfFile = 'Error: unexpected end of file';
+  sUnexpectedStructErr = 'unexpected structural error';
+  sParentIsRequired    = 'parent is required for new element';
+
   sUpdateBeginEndMismatch = 'Update begin/end mismatch error';
 
 
@@ -589,7 +686,7 @@ const
 
 resourcestring
 
-  sDuplicateElementRegistered  = 'Duplicate element with id %d registered';
+  sDuplicateElementRegistered  = 'Duplicate element with class %s registered';
   sDuplicatePropertyRegistered = 'Duplicate property with id %d registered';
   sUknownPropertyType          = 'Unknown property type with id %d';
   sNoSuchPropertyForClass      = 'No such property for class %s';
@@ -613,6 +710,13 @@ resourcestring
   sUnregisteredTransform  = 'Unregistered transform when writing';
   sIllegalPropertyValue   = 'Illegal property value';
   sUnknownRasterImageType = 'Unknown raster image type';
+  sPointListIncorrect     = 'Pointlist incorrect in transform';
+
+{ from pgScalableVectorGraphics }
+
+resourcestring
+
+  sSVGRootExpected = 'SVG root node expected';
 
 { from pgTransform.pas }
 
@@ -655,39 +759,16 @@ const
      'PropRemove',
      'PropUpdate');
 
-type
-  TpgSceneChangeEvent = procedure (Sender: TObject; AElementId, APropId: longword;
-    AChange: TpgChangeType) of object;
-
 { constants }
 
 const
-
-  // Element id constants, for all elements that must be stored
-  eiElement            =   1; // Basic TpgElement
-  eiStyleable          =   2; // TpgStyleable
-  eiStyle              =   3; // TpgStyle
-  eiGroup              =   4; // TpgGroup
-  eiViewPort           =   5;
-  eiRectangle          =  10;
-  eiCircle             =  11;
-  eiEllipse            =  12;
-  eiLine               =  13;
-  eiPolyLine           =  14;
-  eiPolygon            =  15;
-  eiPathShape          =  16;
-  eiText               =  20;
-  eiTextSpan           =  21;
-  eiImageView          =  30;
-  eiResource           =  40;
-  eiImageResource      =  41;
-  eiProjectiveViewPort =  42;
 
   // Property id constants, must be unique and > 0
   piElementList       =   1; // ElementList property
   piClone             =   2; // Clone property (Ref)
   piStyle             =   3; // Style property (Ref)
   piName              =   4; // Name property (String)
+  piID                =   5; // ID property (String)
 
   // positioning properties
   piRectX             =  10;
@@ -770,6 +851,8 @@ const
   cMaxSingle  = 1E30;
   cMaxInteger = 2147483647;
 
+  cFirstLayerGuid: TGUID = (D1: 1; D2: 0; D3: 0; D4: (0, 0, 0, 0, 0, 0, 0, 0));
+
 { from former pgDefaults.pas }
 
 const
@@ -803,24 +886,6 @@ function pgDebugMessageToString(AWarnStyle: TsdWarnStyle; ASrcPos: int64; const 
   Copyright (c) 2006 - 2011 SimDesign BV
 }
 
-var
-
-  // When pgSetAntiAliasing(AFixedBits) is selected from 0..4, lookup tables
-  // are used.
-  // When selecting a higher setting, multiplication is used per output value.
-  // 0 results in NO antialiasing, and 1, 2, 3, 4 in increasing
-  // levels. Level 4 is 256 anti-aliasing steps (default).
-  cFixedBits: integer = 0; // = 4;
-
-  cFixedScale: integer = 0; // = 1 shl cFixedPrecision;
-  cFixedMask: integer = 0; // = cFixedBase - 1;
-  cFixedBias: integer = 0; // = cFixedBase div 2 - 1;
-  cAALevels: integer = 0; // = cFixedScale * cFixedScale
-  cLevelsToCover: double = 0;
-
-  // glBufferToValueTable is used in AA to find the cover for each value
-  glBufferToValueTable: array of byte;
-
 { Set the AntiAliasing level.
    AFixedBits = 0:   No Anti-Aliasing (1 level)
    AFixedBits = 1:    4 Anti-Aliasing levels
@@ -834,6 +899,34 @@ procedure pgSetAntiAliasing(AFixedBits: integer);
 
 resourcestring
   styInvalidAntiAliasingLevel = 'Invalid Anti-Aliasing Level';
+
+{ from pgBlend }
+
+resourcestring
+
+  sBitsPerChannelOpNotImplemented = 'Operation not implemented for selected bits per channel';
+  sChannelsOpNotImplemented       = 'Operation not implemented for this number of channels';
+  sSubstractiveOpNotImplemented   = 'Operation not implemented for substractive color model';
+  sAlphaModeOpNotImplemented      = 'Operation not implemented for this alpha mode';
+  sUnknownRenderMode              = 'Unknown render mode: no operation available';
+  sColorOpNotImplemented          = 'Color operation not implemented';
+
+{ from pgPath }
+
+resourcestring
+
+  sCannotMoveToInsidePath       = 'MoveTo command not allowed inside path';
+  sExpectMoveToFirst            = 'Expect MoveTo command first';
+  sCannotClosePath              = 'Cannot close path (not enough points)';
+  sIncrementCannotBeNegative    = 'Increment cannot be negative';
+  sPathConversionNotImplemented = 'Path conversion not implemented';
+  //sNotImplemented               = 'Not Implemented';
+
+{ from pgPolygon }
+
+resourcestring
+
+  sNoCurrentPathDefined = 'No current path defined';
 
 { functions to allow aviodance of Windows }
 
@@ -866,6 +959,8 @@ function pgLimitD(const V, Lower, Upper: double): double;
 function pgSign(const V: single): integer; overload;
 
 procedure pgSwapDouble(var V1, V2: double);
+
+function pgIntPower(const Base: Extended; const Exponent: Integer): Extended;
 
 { Point and box methods (single-precision) }
 
@@ -1006,6 +1101,44 @@ function pgColorDistTaxi32(Col1, Col2: PpgColor32): integer;
 // mix is 255 use Col2, otherwise a linear interpolation in all channels
 function pgColorBlend32(Col1, Col2: PpgColor32; Mix: byte): TpgColor32;
 
+{ from pgColor }
+
+// Element size in bytes for a color with AInfo
+function pgColorElementSize(const AInfo: TpgColorInfo): integer;
+
+{ lowlevel func from pgBlend }
+
+procedure pgFillLongword(var X; Count: Integer; Value: Longword);
+
+{ from pgCPUInfo }
+
+function HasMMX: Boolean;
+
+procedure EMMS;
+
+{ global variables }
+
+var
+
+  // When pgSetAntiAliasing(AFixedBits) is selected from 0..4, lookup tables
+  // are used.
+  // When selecting a higher setting, multiplication is used per output value.
+  // 0 results in NO antialiasing, and 1, 2, 3, 4 in increasing
+  // levels. Level 4 is 256 anti-aliasing steps (default).
+  cFixedBits: integer = 0; // = 4;
+
+  cFixedScale: integer = 0; // = 1 shl cFixedPrecision;
+  cFixedMask: integer = 0; // = cFixedBase - 1;
+  cFixedBias: integer = 0; // = cFixedBase div 2 - 1;
+  cAALevels: integer = 0; // = cFixedScale * cFixedScale
+  cLevelsToCover: double = 0;
+
+  // glBufferToValueTable is used in AA to find the cover for each value
+  glBufferToValueTable: array of byte;
+
+  // is MMX active?
+  glMMXActive: boolean = False;
+
 implementation
 
 function pgDebugMessageToString(AWarnStyle: TsdWarnStyle; ASrcPos: int64; const AMessage: Utf8String): Utf8String;
@@ -1099,6 +1232,14 @@ begin
   Result := Integer(Trunc(X));
   if Frac(X) < 0 then
     Dec(Result);
+end;
+
+function pgBoolToInt(ABool: boolean): integer;
+begin
+  if ABool then
+    Result := 1
+  else
+    Result := 0;
 end;
 
 function pgCeil(const X: Extended): Integer;
@@ -1519,7 +1660,223 @@ begin
   Result := pgArcTan2(X, Sqrt(1 - X * X))
 end;
 
+{ lowlevel funcs from pgBlend }
+
+procedure Mmx_FillLongword(var X; Count: Integer; Value: Longword);
+asm
+// EAX = X
+// EDX = Count
+// ECX = Value
+        CMP        EDX, 0
+        JBE        @Exit
+
+        PUSH       EDI
+        PUSH       EBX
+        MOV        EBX, EDX
+        MOV        EDI, EDX
+
+        SHR        EDI, 1
+        SHL        EDI, 1
+        SUB        EBX, EDI
+        JE         @QLoopIni
+
+        MOV        [EAX], ECX
+        ADD        EAX, 4
+        DEC        EDX
+        JZ         @ExitPOP
+   @QLoopIni:
+        MOVD       MM1, ECX
+        PUNPCKLDQ  MM1, MM1
+        SHR        EDX, 1
+    @QLoop:
+        MOVQ       [EAX], MM1
+        ADD        EAX, 8
+        DEC        EDX
+        JNZ        @QLoop
+        EMMS
+    @ExitPOP:
+        POP        EBX
+        POP        EDI
+    @Exit:
+end;
+
+procedure Asm_FillLongword(var X; Count: Integer; Value: Longword);
+asm
+// EAX = X
+// EDX = Count
+// ECX = Value
+        PUSH    EDI
+
+        MOV     EDI,EAX  // Point EDI to destination
+        MOV     EAX,ECX
+        MOV     ECX,EDX
+        TEST    ECX,ECX
+        JS      @exit
+
+        REP     STOSD    // Fill count dwords
+@exit:
+        POP     EDI
+end;
+
+function pgColorElementSize(const AInfo: TpgColorInfo): integer;
+const
+  cByteCount: array[TpgBitsPerChannel] of integer = (1, 2);
+begin
+  Result := cByteCount[AInfo.BitsPerChannel] * AInfo.Channels;
+end;
+
+procedure pgFillLongword(var X; Count: Integer; Value: Longword);
+begin
+  if glMMXActive then
+    Mmx_FillLongword(X, Count, Value)
+  else
+    Asm_FillLongword(X, Count, Value);
+end;
+
+{ from pgCPUInfo }
+
+type
+  TCPUInstructionSet = (ciMMX, ciSSE, ciSSE2, ci3DNow, ci3DNowExt);
+
+const
+
+  CPUISChecks: Array[TCPUInstructionSet] of Cardinal =
+    (  $800000, // ciMMX
+      $2000000, // ciSSE
+      $4000000, // ciSSE2
+     $80000000, // ci3DNow
+     $40000000  // c3DNowExt
+     );
+
+function CPUID_Available: Boolean;
+asm
+        MOV       EDX,False
+        PUSHFD
+        POP       EAX
+        MOV       ECX,EAX
+        XOR       EAX,$00200000
+        PUSH      EAX
+        POPFD
+        PUSHFD
+        POP       EAX
+        XOR       ECX,EAX
+        JZ        @1
+        MOV       EDX,True
+@1:     PUSH      EAX
+        POPFD
+        MOV       EAX,EDX
+end;
+
+function CPU_Signature: Integer;
+asm
+        PUSH    EBX
+        MOV     EAX,1
+        DW      $A20F   // CPUID
+        POP     EBX
+end;
+
+function CPU_Features: Integer;
+asm
+        PUSH    EBX
+        MOV     EAX,1
+        DW      $A20F   // CPUID
+        POP     EBX
+        MOV     EAX,EDX
+end;
+
+function CPU_AMDExtensionsAvailable: Boolean;
+asm
+        PUSH    EBX
+        MOV     @Result, True
+        MOV     EAX, $80000000
+        DW      $A20F   // CPUID
+        CMP     EAX, $80000000
+        JBE     @NOEXTENSION
+        JMP     @EXIT
+      @NOEXTENSION:
+        MOV     @Result, False
+      @EXIT:
+        POP     EBX
+end;
+
+function CPU_AMDExtFeatures: Integer;
+asm
+        PUSH    EBX
+        MOV     EAX, $80000001
+        DW      $A20F   // CPUID
+        POP     EBX
+        MOV     EAX,EDX
+end;
+
+function HasInstructionSet(const InstructionSet: TCPUInstructionSet): Boolean;
+begin
+  Result := False;
+  if not CPUID_Available then
+    // no CPUID available
+    exit;
+
+  if CPU_Signature shr 8 and $0F < 5 then
+    // not a Pentium class
+    exit;
+
+  if (InstructionSet = ci3DNow) or (InstructionSet = ci3DNowExt) then
+  begin
+    if not CPU_AMDExtensionsAvailable or (CPU_AMDExtFeatures and CPUISChecks[InstructionSet] = 0) then
+      exit;
+  end
+  else
+    if CPU_Features and CPUISChecks[InstructionSet] = 0 then
+      // no MMX
+      exit;
+
+  Result := True;
+end;
+
+function HasMMX: Boolean;
+begin
+  Result := HasInstructionSet(ciMMX);
+end;
+
 { a few ASM functions... }
+
+function pgIntPower(const Base: Extended; const Exponent: Integer): Extended;
+asm
+        mov     ecx, eax
+        cdq
+        fld1                      { Result := 1 }
+        xor     eax, edx
+        sub     eax, edx          { eax := Abs(Exponent) }
+        jz      @@3
+        fld     Base
+        jmp     @@2
+@@1:    fmul    ST, ST            { X := Base * Base }
+@@2:    shr     eax,1
+        jnc     @@1
+        fmul    ST(1),ST          { Result := Result * X }
+        jnz     @@1
+        fstp    st                { pop X from FPU stack }
+        cmp     ecx, 0
+        jge     @@3
+        fld1
+        fdivrp                    { Result := 1 / Result }
+@@3:
+        fwait
+end;
+
+procedure EMMS;
+begin
+  if glMmxActive then
+  asm
+    EMMS
+  end;
+end;
+{procedure EMMS;
+begin
+  if glMMXActive then
+  asm
+    db $0F,$77               /// EMMS
+  end;
+end;}
 
 function pgSAR8(AValue: integer): integer;
 asm
@@ -1552,6 +1909,9 @@ asm
 end;
 
 initialization
+
+  // MMX Detection
+  glMMXActive := HasMMX;
 
   // Default to AA precision 4 (256 levels)
   pgSetAntiAliasing(4);

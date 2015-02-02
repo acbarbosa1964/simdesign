@@ -15,10 +15,9 @@ unit pgSelector;
 interface
 
 uses
-  Classes, SysUtils, Contnrs, pgPlatform, Pyro, pgTransform, pgViewPort, pgDocument, pgShape,
-  pgText, pgRender, pgCanvas, pgRenderPath, pgContentProvider,
-  pgGeometry, pgImage, pgColor, {pgLists,}
-  pgViewer, Controls, pgProjectiveTransform;
+  Classes, SysUtils, Controls, Contnrs, pgPlatform, Pyro, pgTransform, pgDocument,
+  pgScene, pgRender, pgCanvas, pgPath, pgContentProvider,
+  pgGeometry, pgColor, pgViewer;
 
 type
 
@@ -120,7 +119,6 @@ type
       AStyle: TpgTransformHandleStyle; ACursor: TCursor): TpgHandle;
     procedure BuildTransformHandles;
   protected
-    function GetGraphic(AId: longword): TpgGraphic;
     function GetTransformProp: TpgTransformProp;
     function GetRenderer: TpgRenderer;
     procedure BuildTransformList(ACanvas: TpgCanvas; AGraphic: TpgGraphic; AList: TpgTransformList);
@@ -130,7 +128,7 @@ type
     function CorrectSnap(const Mouse: TpgMouseInfo; ALocation: TpgPoint): TpgPoint;
     procedure SetActiveHandleId(AId: integer);
   public
-    constructor Create(AOwner: TObject; ACanvas: TpgCanvas; AId: longword; AScreenScale: double); virtual;
+    constructor Create(AOwner: TObject; ACanvas: TpgCanvas; AElement: TpgElement; AScreenScale: double); virtual;
     destructor Destroy; override;
     procedure DoMouseStartDrag(const Mouse: TpgMouseInfo);
     procedure DoMouseDrag(ACanvas: TpgCanvas; const Mouse: TpgMouseInfo);
@@ -150,7 +148,7 @@ type
   private
     function GetItems(Index: integer): TpgSelector;
   public
-    procedure SceneChange(Sender: TObject; AElementId, APropId: longword;
+    procedure SceneChange(Sender: TObject; AElement: TpgElement; APropId: longword;
       AChange: TpgChangeType); virtual;
     property Items[Index: integer]: TpgSelector read GetItems; default;
   end;
@@ -172,7 +170,7 @@ function GraphicType(AGraphic: TpgGraphic): TpgGraphicType;
 implementation
 
 uses
-  pgSceneEditor, pgSelectHandles;
+  pgEditorUsingScene, pgSelectHandles;
 
 type
 
@@ -262,29 +260,29 @@ begin
     gtText:
       begin
         T := TpgText(FGraphic);
-        BuildMoveHandle(T.X.Values[0].Value, T.Y.Values[0].Value - T.FontSize.Value,
+        BuildMoveHandle(T.X.Values[0].Value, T.Y.Values[0].Value - T.FontSize.FloatValue,
           [mfNoNegative, mfFlipY, mfOnlyY], T, 0, piFontSize, 2);
       end;
     gtRectangle:
       begin
         R := TpgRectangle(FGraphic);
-        BuildMoveHandle(R.X.Value + R.Width.Value, R.Y.Value + R.Height.Value,
+        BuildMoveHandle(R.X.FloatValue + R.Width.FloatValue, R.Y.FloatValue + R.Height.FloatValue,
           [mfNoNegative], R, piRectWidth, piRectHeight, 1);
-        BuildMoveHandle(R.X.Value + R.Width.Value -  R.Rx.Value, R.Y.Value + R.Ry.Value,
+        BuildMoveHandle(R.X.FloatValue + R.Width.FloatValue -  R.Rx.FloatValue, R.Y.FloatValue + R.Ry.FloatValue,
           [mfNoNegative, mfFlipX], R, piRectRx, piRectRy, 2);
       end;
     gtEllipse:
       begin
         E := TpgEllipse(FGraphic);
-        BuildMoveHandle(E.Cx.Value + E.Rx.Value, E.Cy.Value,
+        BuildMoveHandle(E.Cx.FloatValue + E.Rx.FloatValue, E.Cy.FloatValue,
           [mfOnlyX, mfNoNegative], E, piEllipseRx, 0, 1);
-        BuildMoveHandle(E.Cx.Value, E.Cy.Value + E.Ry.Value,
+        BuildMoveHandle(E.Cx.FloatValue, E.Cy.FloatValue + E.Ry.FloatValue,
           [mfOnlyY, mfNoNegative], E, 0, piEllipseRy, 1);
       end;
     gtImageView:
       begin
         IV := TpgImageView(FGraphic);
-        BuildMoveHandle(IV.X.Value + IV.Width.Value, IV.Y.Value + IV.Height.Value,
+        BuildMoveHandle(IV.X.FloatValue + IV.Width.FloatValue, IV.Y.FloatValue + IV.Height.FloatValue,
           [mfNoNegative], IV, piVPWidth, piVPHeight, 1);
       end;
     end;
@@ -343,7 +341,7 @@ begin
   Handle.OriginS := pgPoint(AOriginX, AOriginY);
   Handle.Id := 2;
   Handle.Style := AStyle;
-  Handle.Transform := FGraphic.Transform.Value;
+  Handle.Transform := FGraphic.Transform.TransformValue;
   Handle.Cursor := ACursor;
   FHandles.Add(Handle);
   Result := Handle;
@@ -357,7 +355,7 @@ var
   PT: TpgProjectiveTransform;
   PHandles: array[0..5] of TpgTransformHandle;
 begin
-  Transform := FGraphicCopy.Transform.Value;
+  Transform := FGraphicCopy.Transform.TransformValue;
   if not assigned(Transform) then exit;
   MidX := (FBox.Rgt + FBox.Lft) * 0.5;
   MidY := (FBox.Btm + FBox.Top) * 0.5;
@@ -409,7 +407,7 @@ var
   T: TpgTransform;
 begin
   AList.Clear;
-  AList.Precat(AGraphic.Transform.Value);// not the local transform!
+  AList.Precat(AGraphic.Transform.TransformValue);// not the local transform!
   E := FGraphic.Parent;
   while (E is TpgGraphic) do begin
     if E is TpgViewPort then
@@ -418,7 +416,7 @@ begin
       AList.Precat(T);
       FScratchTransforms.Add(T);
     end;
-    AList.Precat(TGraphicAccess(E).Transform.Value);
+    AList.Precat(TGraphicAccess(E).Transform.TransformValue);
     E := E.Parent;
   end;
 end;
@@ -430,7 +428,7 @@ begin
   Result := ALocation;
 end;
 
-constructor TpgSelector.Create(AOwner: TObject; ACanvas: TpgCanvas; AId: longword; AScreenScale: double);
+constructor TpgSelector.Create(AOwner: TObject; ACanvas: TpgCanvas; AElement: TpgElement; AScreenScale: double);
 begin
   inherited Create;
   FHandles := TpgHandleList.Create;
@@ -443,7 +441,7 @@ begin
   FTransformPathScreen := TpgRenderPath.Create;
   FOwner := AOwner;
   FScreenScale := AScreenScale;
-  FGraphic := GetGraphic(AId);
+  FGraphic := TpgGraphic(AElement);
   Update(ACanvas);
 end;
 
@@ -468,13 +466,13 @@ begin
   // Now we must play the handle to the graphic, not the copy
 
   // The handle we're working with
-  FGraphic.Transform.BeforeChange;
+  //FGraphic.Transform.BeforeChange;
   FGraphic.Transform.Assign(FGraphicCopy.Transform);
   for i := 0 to FHandles.Count - 1 do
     if FHandles[i].IsActive then
       if not (FHandles[i] is TpgTransformHandle) then
         FHandles[i].PlayToGraphic(FGraphic);
-  FGraphic.Transform.AfterChange;
+  //FGraphic.Transform.AfterChange;
   // Rebuild the list
   Update(ACanvas);
   FIsDragging := False;
@@ -518,15 +516,6 @@ procedure TpgSelector.DoMouseStartDrag(const Mouse: TpgMouseInfo);
 begin
   FBasePoint := TpgSceneEditor(FOwner).ToContent(Mouse.X, Mouse.Y);
   FIsDragging := True;
-end;
-
-function TpgSelector.GetGraphic(AId: longword): TpgGraphic;
-var
-  E: TpgElement;
-begin
-  Result := nil;
-  E := TpgSceneEditor(FOwner).Scene.ElementById(AId);
-  if E is TpgGraphic then Result := TpgGraphic(E);
 end;
 
 function TpgSelector.GetRenderer: TpgRenderer;
@@ -724,7 +713,7 @@ begin
     ACanvas.PaintPath(FGraphicPath, Fill, Stroke);
 
     // Paint transform border
-    if assigned(FGraphicCopy.Transform.Value) then begin
+    if assigned(FGraphicCopy.Transform.TransformValue) then begin
       Fill.Color := $100000FF;
       ACanvas.PaintPath(FTransformPath, Fill, nil);
     end;
@@ -764,7 +753,7 @@ begin
   Result := Get(Index);
 end;
 
-procedure TpgSelectorList.SceneChange(Sender: TObject; AElementId,
+procedure TpgSelectorList.SceneChange(Sender: TObject; AElement: TpgElement;
   APropId: longword; AChange: TpgChangeType);
 begin
   if AChange = ctListClear then Clear;

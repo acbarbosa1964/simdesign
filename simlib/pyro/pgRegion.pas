@@ -1,5 +1,8 @@
 { Project: Pyro
 
+  Description:
+  Region classes
+
   Author: Nils Haeck (n.haeck@simdesign.nl)
   Copyright (c) 2006-2011 SimDesign BV
 }
@@ -10,7 +13,8 @@ unit pgRegion;
 interface
 
 uses
-  Classes, SysUtils, pgPolygon, pgGeometry, Pyro, pgPath;
+  Classes, SysUtils,
+  pgPolygon, pgGeometry, Pyro, pgPath;
 
 type
 
@@ -114,9 +118,6 @@ type
     function RectInRegion(const R: TpgBox): boolean; override;
     function BoundingBox: TpgBox; override;
   end;
-
-resourcestring
-  sNotImplemented = 'Not Implemented';
 
 implementation
 
