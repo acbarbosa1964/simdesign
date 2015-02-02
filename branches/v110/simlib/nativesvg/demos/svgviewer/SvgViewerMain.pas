@@ -221,7 +221,7 @@ begin
 
   // The parent of the shapes is the default scene's viewport
   Parent := FScene.Viewport;
-  for i := 1 to 100 do
+  for i := 1 to 5 do
   begin
     Line := TpgLine.Create(Parent);
 
